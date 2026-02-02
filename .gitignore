@@ -1,0 +1,8 @@
+target/
+Cargo.lock
+llm-tool-test-results/
+*.log
+.DS_Store
+*.swp
+*.swo
+*~
