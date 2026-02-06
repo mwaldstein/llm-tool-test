@@ -1,159 +1,187 @@
 use super::super::*;
 
 #[test]
-fn test_note_exists_gate() {
-    let yaml = r#"
-name: test
-description: "Test"
-template_folder: qipu
-target:
-  binary: qipu
-task:
-  prompt: "Test prompt"
-evaluation:
-  gates:
-    - type: note_exists
-      id: "qp-1234"
-"#;
-    let scenario: Scenario = serde_yaml::from_str(yaml).unwrap();
-    assert_eq!(scenario.name, "test");
-    assert_eq!(scenario.evaluation.gates.len(), 1);
-    match &scenario.evaluation.gates[0] {
-        Gate::NoteExists { id } => assert_eq!(id, "qp-1234"),
-        _ => panic!("Expected NoteExists gate"),
-    }
-}
-
-#[test]
-fn test_link_exists_gate() {
-    let yaml = r#"
-name: test
-description: "Test"
-template_folder: qipu
-target:
-  binary: qipu
-task:
-  prompt: "Test prompt"
-evaluation:
-  gates:
-    - type: link_exists
-      from: "qp-1234"
-      to: "qp-5678"
-      link_type: "related"
-"#;
-    let scenario: Scenario = serde_yaml::from_str(yaml).unwrap();
-    assert_eq!(scenario.name, "test");
-    assert_eq!(scenario.evaluation.gates.len(), 1);
-    match &scenario.evaluation.gates[0] {
-        Gate::LinkExists {
-            from,
-            to,
-            link_type,
-        } => {
-            assert_eq!(from, "qp-1234");
-            assert_eq!(to, "qp-5678");
-            assert_eq!(link_type, "related");
-        }
-        _ => panic!("Expected LinkExists gate"),
-    }
-}
-
-#[test]
-fn test_tag_exists_gate() {
-    let yaml = r#"
-name: test
-description: "Test"
-template_folder: qipu
-target:
-  binary: qipu
-task:
-  prompt: "Test prompt"
-evaluation:
-  gates:
-    - type: tag_exists
-      tag: "important"
-"#;
-    let scenario: Scenario = serde_yaml::from_str(yaml).unwrap();
-    assert_eq!(scenario.name, "test");
-    assert_eq!(scenario.evaluation.gates.len(), 1);
-    match &scenario.evaluation.gates[0] {
-        Gate::TagExists { tag } => assert_eq!(tag, "important"),
-        _ => panic!("Expected TagExists gate"),
-    }
-}
-
-#[test]
-fn test_content_contains_gate() {
-    let yaml = r#"
-name: test
-description: "Test"
-template_folder: qipu
-target:
-  binary: qipu
-task:
-  prompt: "Test prompt"
-evaluation:
-  gates:
-    - type: content_contains
-      id: "qp-1234"
-      substring: "important keyword"
-"#;
-    let scenario: Scenario = serde_yaml::from_str(yaml).unwrap();
-    assert_eq!(scenario.name, "test");
-    assert_eq!(scenario.evaluation.gates.len(), 1);
-    match &scenario.evaluation.gates[0] {
-        Gate::ContentContains { id, substring } => {
-            assert_eq!(id, "qp-1234");
-            assert_eq!(substring, "important keyword");
-        }
-        _ => panic!("Expected ContentContains gate"),
-    }
-}
-
-#[test]
 fn test_command_succeeds_gate() {
     let yaml = r#"
 name: test
 description: "Test"
-template_folder: qipu
+template_folder: fixture
 target:
-  binary: qipu
+  binary: tool
 task:
   prompt: "Test prompt"
 evaluation:
   gates:
     - type: command_succeeds
-      command: "list"
+      command: "true"
 "#;
     let scenario: Scenario = serde_yaml::from_str(yaml).unwrap();
-    assert_eq!(scenario.name, "test");
-    assert_eq!(scenario.evaluation.gates.len(), 1);
+
     match &scenario.evaluation.gates[0] {
-        Gate::CommandSucceeds { command } => assert_eq!(command, "list"),
+        Gate::CommandSucceeds { command } => assert_eq!(command, "true"),
         _ => panic!("Expected CommandSucceeds gate"),
     }
 }
 
 #[test]
-fn test_doctor_passes_gate() {
+fn test_command_output_contains_gate() {
     let yaml = r#"
 name: test
 description: "Test"
-template_folder: qipu
+template_folder: fixture
 target:
-  binary: qipu
+  binary: tool
 task:
   prompt: "Test prompt"
 evaluation:
   gates:
-    - type: doctor_passes
+    - type: command_output_contains
+      command: "printf hello"
+      substring: "hell"
 "#;
     let scenario: Scenario = serde_yaml::from_str(yaml).unwrap();
-    assert_eq!(scenario.name, "test");
-    assert_eq!(scenario.evaluation.gates.len(), 1);
+
     match &scenario.evaluation.gates[0] {
-        Gate::DoctorPasses => (),
-        _ => panic!("Expected DoctorPasses gate"),
+        Gate::CommandOutputContains { command, substring } => {
+            assert_eq!(command, "printf hello");
+            assert_eq!(substring, "hell");
+        }
+        _ => panic!("Expected CommandOutputContains gate"),
+    }
+}
+
+#[test]
+fn test_command_output_matches_gate() {
+    let yaml = r#"
+name: test
+description: "Test"
+template_folder: fixture
+target:
+  binary: tool
+task:
+  prompt: "Test prompt"
+evaluation:
+  gates:
+    - type: command_output_matches
+      command: "printf hello"
+      pattern: "^hello$"
+"#;
+    let scenario: Scenario = serde_yaml::from_str(yaml).unwrap();
+
+    match &scenario.evaluation.gates[0] {
+        Gate::CommandOutputMatches { command, pattern } => {
+            assert_eq!(command, "printf hello");
+            assert_eq!(pattern, "^hello$");
+        }
+        _ => panic!("Expected CommandOutputMatches gate"),
+    }
+}
+
+#[test]
+fn test_command_json_path_gate() {
+    let yaml = r#"
+name: test
+description: "Test"
+template_folder: fixture
+target:
+  binary: tool
+task:
+  prompt: "Test prompt"
+evaluation:
+  gates:
+    - type: command_json_path
+      command: "echo '{\"ok\": true}'"
+      path: "$.ok"
+      assertion: "equals true"
+"#;
+    let scenario: Scenario = serde_yaml::from_str(yaml).unwrap();
+
+    match &scenario.evaluation.gates[0] {
+        Gate::CommandJsonPath {
+            command,
+            path,
+            assertion,
+        } => {
+            assert_eq!(command, "echo '{\"ok\": true}'");
+            assert_eq!(path, "$.ok");
+            assert_eq!(assertion, "equals true");
+        }
+        _ => panic!("Expected CommandJsonPath gate"),
+    }
+}
+
+#[test]
+fn test_file_gates() {
+    let yaml = r#"
+name: test
+description: "Test"
+template_folder: fixture
+target:
+  binary: tool
+task:
+  prompt: "Test prompt"
+evaluation:
+  gates:
+    - type: file_exists
+      path: "README.md"
+    - type: file_contains
+      path: "README.md"
+      substring: "hello"
+    - type: file_matches
+      path: "README.md"
+      pattern: "hello.*world"
+"#;
+    let scenario: Scenario = serde_yaml::from_str(yaml).unwrap();
+
+    match &scenario.evaluation.gates[0] {
+        Gate::FileExists { path } => assert_eq!(path, "README.md"),
+        _ => panic!("Expected FileExists gate"),
+    }
+
+    match &scenario.evaluation.gates[1] {
+        Gate::FileContains { path, substring } => {
+            assert_eq!(path, "README.md");
+            assert_eq!(substring, "hello");
+        }
+        _ => panic!("Expected FileContains gate"),
+    }
+
+    match &scenario.evaluation.gates[2] {
+        Gate::FileMatches { path, pattern } => {
+            assert_eq!(path, "README.md");
+            assert_eq!(pattern, "hello.*world");
+        }
+        _ => panic!("Expected FileMatches gate"),
+    }
+}
+
+#[test]
+fn test_script_gate() {
+    let yaml = r#"
+name: test
+description: "Test"
+template_folder: fixture
+target:
+  binary: tool
+task:
+  prompt: "Test prompt"
+evaluation:
+  gates:
+    - type: script
+      command: "./scripts/check.sh"
+      description: "custom check"
+"#;
+    let scenario: Scenario = serde_yaml::from_str(yaml).unwrap();
+
+    match &scenario.evaluation.gates[0] {
+        Gate::Script {
+            command,
+            description,
+        } => {
+            assert_eq!(command, "./scripts/check.sh");
+            assert_eq!(description, "custom check");
+        }
+        _ => panic!("Expected Script gate"),
     }
 }
 
@@ -162,9 +190,9 @@ fn test_no_transcript_errors_gate() {
     let yaml = r#"
 name: test
 description: "Test"
-template_folder: qipu
+template_folder: fixture
 target:
-  binary: qipu
+  binary: tool
 task:
   prompt: "Test prompt"
 evaluation:
@@ -172,10 +200,9 @@ evaluation:
     - type: no_transcript_errors
 "#;
     let scenario: Scenario = serde_yaml::from_str(yaml).unwrap();
-    assert_eq!(scenario.name, "test");
-    assert_eq!(scenario.evaluation.gates.len(), 1);
+
     match &scenario.evaluation.gates[0] {
-        Gate::NoTranscriptErrors => (),
+        Gate::NoTranscriptErrors => {}
         _ => panic!("Expected NoTranscriptErrors gate"),
     }
 }

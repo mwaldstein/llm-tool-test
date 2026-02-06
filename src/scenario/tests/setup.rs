@@ -12,8 +12,8 @@ task:
   prompt: "Test prompt"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 setup:
   commands:
     - "qipu init"
@@ -40,8 +40,8 @@ task:
   prompt: "Test prompt"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 "#;
     let scenario: Scenario = serde_yaml::from_str(yaml).unwrap();
     assert_eq!(scenario.name, "test");
@@ -60,8 +60,8 @@ task:
   prompt: "Test prompt"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 setup:
   commands:
     - "pwd"

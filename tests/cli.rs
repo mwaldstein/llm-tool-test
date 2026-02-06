@@ -41,8 +41,8 @@ task:
   prompt: "Test"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 "#;
     fs::write(qipu_dir.join("test_basic.yaml"), scenario_content).unwrap();
 
@@ -97,8 +97,8 @@ task:
   prompt: "Test"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 "#;
     fs::write(fixtures_dir.join("test_scenario.yaml"), scenario_content).unwrap();
 
@@ -132,8 +132,8 @@ task:
   prompt: "Test"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 "#;
     let scenario2_content = r#"
 name: scenario2
@@ -148,8 +148,8 @@ task:
   prompt: "Test"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 "#;
 
     fs::write(fixtures_dir.join("scenario1.yaml"), scenario1_content).unwrap();
@@ -184,8 +184,8 @@ task:
   prompt: "Test"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 "#;
     fs::write(qipu_dir.join("dry_run_test.yaml"), scenario_content).unwrap();
 
@@ -224,8 +224,8 @@ task:
   prompt: "Test"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 "#;
     let scenario2_content = r#"
 name: untagged_scenario
@@ -238,8 +238,8 @@ task:
   prompt: "Test"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 "#;
 
     fs::write(qipu_dir.join("tagged_scenario.yaml"), scenario1_content).unwrap();
@@ -271,8 +271,8 @@ task:
   prompt: "Test"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 "#;
     fs::write(qipu_dir.join("tool_test.yaml"), scenario_content).unwrap();
 
@@ -308,8 +308,8 @@ task:
   prompt: "Test"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 "#;
     fs::write(qipu_dir.join("model_test.yaml"), scenario_content).unwrap();
 
@@ -346,8 +346,8 @@ task:
   prompt: "Test"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 "#;
     let scenario2_content = r#"
 name: tier1_scenario
@@ -360,8 +360,8 @@ task:
   prompt: "Test"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 "#;
 
     fs::write(qipu_dir.join("tier0_scenario.yaml"), scenario1_content).unwrap();
@@ -393,8 +393,8 @@ task:
   prompt: "Test"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 "#;
     fs::write(qipu_dir.join("timeout_test.yaml"), scenario_content).unwrap();
 
@@ -430,8 +430,8 @@ task:
   prompt: "Test"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 "#;
     fs::write(qipu_dir.join("no_cache_test.yaml"), scenario_content).unwrap();
 
@@ -471,8 +471,8 @@ task:
   prompt: "Test"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 "#;
     fs::write(qipu_dir.join("matrix_test.yaml"), scenario_content).unwrap();
 

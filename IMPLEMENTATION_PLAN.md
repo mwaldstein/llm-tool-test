@@ -170,8 +170,10 @@ Replace domain-specific gates with generic primitives per specs/evaluation.md.
 
 ### 3.1 Define new gate enum
 
+**Status:** ✅ Complete
+
 **Files:**
-- `src/scenario/types.rs` — Replace the current `Gate` enum with:
+- ✅ `src/scenario/types.rs` — Replaced the `Gate` enum with the generic variants:
   ```rust
   #[derive(Debug, Clone, Serialize, Deserialize)]
   #[serde(tag = "type", rename_all = "snake_case")]
@@ -187,8 +189,16 @@ Replace domain-specific gates with generic primitives per specs/evaluation.md.
       Script { command: String, description: String },
   }
   ```
+- ✅ `src/scenario/tests/gates.rs` — Rewrote gate-deserialization tests to cover each new gate variant.
+- ✅ Updated inline YAML fixtures to use generic gates so parsing and CLI tests stay aligned:
+  - `src/scenario/tests/basic.rs`
+  - `src/scenario/tests/setup.rs`
+  - `src/scenario/tests/run_config.rs`
+  - `src/run/tests.rs`
+  - `tests/cli.rs`
+- ✅ `src/evaluation.rs` — Updated gate dispatch to compile with the new enum; added initial implementations for `command_output_contains`, `command_output_matches`, `file_exists`, `file_contains`, and `file_matches`, with `command_json_path` and `script` marked not implemented pending Phase 3.2/4.4 details.
 
-**Verify:** `cargo build` will fail — the evaluator still references old variants. That's expected; fixed in 3.2.
+**Verify:** ✅ `cargo build` — no compile errors. ✅ `cargo test` — all tests pass (152 total).
 
 ### 3.2 Implement generic gate evaluators
 

@@ -43,102 +43,29 @@ impl GateEvaluator for Gate {
         command_pattern: Option<&str>,
     ) -> GateResult {
         match self {
-            Gate::MinNotes { count } => eval_min_notes(*count, env_root),
-            Gate::MinLinks { count } => eval_min_links(*count, env_root),
-            Gate::SearchHit { query } => eval_search_hit(query, env_root),
-            Gate::NoteExists { id } => eval_note_exists(id, env_root),
-            Gate::LinkExists {
-                from,
-                to,
-                link_type,
-            } => eval_link_exists(from, to, link_type, env_root),
-            Gate::TagExists { tag } => eval_tag_exists(tag, env_root),
-            Gate::ContentContains { id, substring } => {
-                eval_content_contains(id, substring, env_root)
-            }
             Gate::CommandSucceeds { command } => eval_command_succeeds(command, env_root),
-            Gate::DoctorPasses => eval_doctor_passes(env_root),
+            Gate::CommandOutputContains { command, substring } => {
+                eval_command_output_contains(command, substring, env_root)
+            }
+            Gate::CommandOutputMatches { command, pattern } => {
+                eval_command_output_matches(command, pattern, env_root)
+            }
+            Gate::CommandJsonPath {
+                command,
+                path,
+                assertion,
+            } => eval_command_json_path(command, path, assertion, env_root),
+            Gate::FileExists { path } => eval_file_exists(path, env_root),
+            Gate::FileContains { path, substring } => eval_file_contains(path, substring, env_root),
+            Gate::FileMatches { path, pattern } => eval_file_matches(path, pattern, env_root),
             Gate::NoTranscriptErrors => {
                 eval_no_transcript_errors(env_root, target_binary, command_pattern)
             }
+            Gate::Script {
+                command,
+                description,
+            } => eval_script(command, description),
         }
-    }
-}
-
-fn eval_min_notes(count: usize, _env_root: &Path) -> GateResult {
-    GateResult {
-        gate_type: "MinNotes".to_string(),
-        passed: false,
-        message: format!(
-            "MinNotes gate not implemented (requires qipu). Expected >= {} notes.",
-            count
-        ),
-    }
-}
-
-fn eval_min_links(count: usize, _env_root: &Path) -> GateResult {
-    GateResult {
-        gate_type: "MinLinks".to_string(),
-        passed: false,
-        message: format!(
-            "MinLinks gate not implemented (requires qipu). Expected >= {} links.",
-            count
-        ),
-    }
-}
-
-fn eval_search_hit(query: &str, _env_root: &Path) -> GateResult {
-    GateResult {
-        gate_type: "SearchHit".to_string(),
-        passed: false,
-        message: format!(
-            "SearchHit gate not implemented (requires qipu). Query: '{}'.",
-            query
-        ),
-    }
-}
-
-fn eval_note_exists(id: &str, _env_root: &Path) -> GateResult {
-    GateResult {
-        gate_type: "NoteExists".to_string(),
-        passed: false,
-        message: format!(
-            "NoteExists gate not implemented (requires qipu). Note ID: '{}'.",
-            id
-        ),
-    }
-}
-
-fn eval_link_exists(from: &str, to: &str, link_type: &str, _env_root: &Path) -> GateResult {
-    GateResult {
-        gate_type: "LinkExists".to_string(),
-        passed: false,
-        message: format!(
-            "LinkExists gate not implemented (requires qipu). Link: {} --[{}]--> {}.",
-            from, link_type, to
-        ),
-    }
-}
-
-fn eval_tag_exists(tag: &str, _env_root: &Path) -> GateResult {
-    GateResult {
-        gate_type: "TagExists".to_string(),
-        passed: false,
-        message: format!(
-            "TagExists gate not implemented (requires qipu). Tag: '{}'.",
-            tag
-        ),
-    }
-}
-
-fn eval_content_contains(id: &str, substring: &str, _env_root: &Path) -> GateResult {
-    GateResult {
-        gate_type: "ContentContains".to_string(),
-        passed: false,
-        message: format!(
-            "ContentContains gate not implemented (requires qipu). Note: '{}', substring: '{}'.",
-            id, substring
-        ),
     }
 }
 
@@ -176,11 +103,173 @@ fn eval_command_succeeds(command: &str, env_root: &Path) -> GateResult {
     }
 }
 
-fn eval_doctor_passes(_env_root: &Path) -> GateResult {
+fn eval_command_output_contains(command: &str, substring: &str, env_root: &Path) -> GateResult {
+    use std::process::Command;
+
+    let output = Command::new("sh")
+        .arg("-c")
+        .arg(command)
+        .current_dir(env_root)
+        .output();
+
+    match output {
+        Ok(output) => {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let passed = output.status.success() && stdout.contains(substring);
+            GateResult {
+                gate_type: "CommandOutputContains".to_string(),
+                passed,
+                message: format!(
+                    "Command '{}' contains substring '{}': {}",
+                    command, substring, passed
+                ),
+            }
+        }
+        Err(e) => GateResult {
+            gate_type: "CommandOutputContains".to_string(),
+            passed: false,
+            message: format!("Failed to execute command '{}': {}", command, e),
+        },
+    }
+}
+
+fn eval_command_output_matches(command: &str, pattern: &str, env_root: &Path) -> GateResult {
+    use regex::Regex;
+    use std::process::Command;
+
+    let regex = match Regex::new(pattern) {
+        Ok(regex) => regex,
+        Err(e) => {
+            return GateResult {
+                gate_type: "CommandOutputMatches".to_string(),
+                passed: false,
+                message: format!("Invalid regex pattern '{}': {}", pattern, e),
+            }
+        }
+    };
+
+    let output = Command::new("sh")
+        .arg("-c")
+        .arg(command)
+        .current_dir(env_root)
+        .output();
+
+    match output {
+        Ok(output) => {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let passed = output.status.success() && regex.is_match(&stdout);
+            GateResult {
+                gate_type: "CommandOutputMatches".to_string(),
+                passed,
+                message: format!(
+                    "Command '{}' matches pattern '{}': {}",
+                    command, pattern, passed
+                ),
+            }
+        }
+        Err(e) => GateResult {
+            gate_type: "CommandOutputMatches".to_string(),
+            passed: false,
+            message: format!("Failed to execute command '{}': {}", command, e),
+        },
+    }
+}
+
+fn eval_command_json_path(
+    command: &str,
+    path: &str,
+    assertion: &str,
+    _env_root: &Path,
+) -> GateResult {
     GateResult {
-        gate_type: "DoctorPasses".to_string(),
+        gate_type: "CommandJsonPath".to_string(),
         passed: false,
-        message: "DoctorPasses gate not implemented (requires qipu).".to_string(),
+        message: format!(
+            "CommandJsonPath gate not implemented yet for command '{}', path '{}', assertion '{}'.",
+            command, path, assertion
+        ),
+    }
+}
+
+fn eval_file_exists(path: &str, env_root: &Path) -> GateResult {
+    let full_path = env_root.join(path);
+    let passed = full_path.exists();
+    GateResult {
+        gate_type: "FileExists".to_string(),
+        passed,
+        message: format!("File '{}' exists: {}", full_path.display(), passed),
+    }
+}
+
+fn eval_file_contains(path: &str, substring: &str, env_root: &Path) -> GateResult {
+    let full_path = env_root.join(path);
+    match std::fs::read_to_string(&full_path) {
+        Ok(content) => {
+            let passed = content.contains(substring);
+            GateResult {
+                gate_type: "FileContains".to_string(),
+                passed,
+                message: format!(
+                    "File '{}' contains substring '{}': {}",
+                    full_path.display(),
+                    substring,
+                    passed
+                ),
+            }
+        }
+        Err(e) => GateResult {
+            gate_type: "FileContains".to_string(),
+            passed: false,
+            message: format!("Failed to read file '{}': {}", full_path.display(), e),
+        },
+    }
+}
+
+fn eval_file_matches(path: &str, pattern: &str, env_root: &Path) -> GateResult {
+    use regex::Regex;
+
+    let regex = match Regex::new(pattern) {
+        Ok(regex) => regex,
+        Err(e) => {
+            return GateResult {
+                gate_type: "FileMatches".to_string(),
+                passed: false,
+                message: format!("Invalid regex pattern '{}': {}", pattern, e),
+            }
+        }
+    };
+
+    let full_path = env_root.join(path);
+    match std::fs::read_to_string(&full_path) {
+        Ok(content) => {
+            let passed = regex.is_match(&content);
+            GateResult {
+                gate_type: "FileMatches".to_string(),
+                passed,
+                message: format!(
+                    "File '{}' matches pattern '{}': {}",
+                    full_path.display(),
+                    pattern,
+                    passed
+                ),
+            }
+        }
+        Err(e) => GateResult {
+            gate_type: "FileMatches".to_string(),
+            passed: false,
+            message: format!("Failed to read file '{}': {}", full_path.display(), e),
+        },
+    }
+}
+
+fn eval_script(command: &str, description: &str) -> GateResult {
+    GateResult {
+        gate_type: "Script".to_string(),
+        passed: false,
+        message: format!(
+            "Script gate not implemented yet for '{}' ({})",
+            command, description
+        ),
     }
 }
 

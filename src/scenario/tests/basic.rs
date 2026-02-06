@@ -12,8 +12,8 @@ task:
   prompt: "Test prompt"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 "#;
     let scenario: Scenario = serde_yaml::from_str(yaml).unwrap();
     assert_eq!(scenario.name, "test");
@@ -32,8 +32,8 @@ task:
   prompt: "Test prompt"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 tool_matrix:
   - tool: opencode
     models: [claude-sonnet-4-20250514, gpt-4o]
@@ -64,8 +64,8 @@ task:
   prompt: "Test prompt"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 tool_matrix:
   - tool: opencode
     models: []
@@ -95,8 +95,8 @@ task:
   prompt: "Test prompt"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 tier: 1
 "#;
     let scenario: Scenario = serde_yaml::from_str(yaml).unwrap();
@@ -117,8 +117,8 @@ task:
   prompt: "Test prompt"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 "#;
     let scenario: Scenario = serde_yaml::from_str(yaml).unwrap();
     assert_eq!(scenario.name, "test");
@@ -137,8 +137,8 @@ task:
   prompt: "Test prompt"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 tags: [capture, links, retrieval]
 "#;
     let scenario: Scenario = serde_yaml::from_str(yaml).unwrap();
@@ -167,10 +167,9 @@ run:
   max_turns: 40
 evaluation:
   gates:
-    - type: min_notes
-      count: 3
-    - type: min_links
-      count: 1
+    - type: command_succeeds
+      command: "true"
+    - type: no_transcript_errors
 setup:
   commands:
     - "qipu init"

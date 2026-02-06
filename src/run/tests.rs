@@ -14,8 +14,8 @@ task:
   prompt: "Create a note"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 run:
   timeout_secs: 120
 "#;
@@ -70,8 +70,8 @@ task:
   prompt: "Create a note"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 "#;
     let scenario: Scenario = serde_yaml::from_str(scenario_yaml).unwrap();
     let base_dir = PathBuf::from("target/test_timeout");

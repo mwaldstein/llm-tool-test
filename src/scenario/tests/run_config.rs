@@ -12,8 +12,8 @@ task:
   prompt: "Test prompt"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 run:
   timeout_secs: 600
   max_turns: 40
@@ -38,8 +38,8 @@ task:
   prompt: "Test prompt"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 "#;
     let scenario: Scenario = serde_yaml::from_str(yaml).unwrap();
     assert_eq!(scenario.name, "test");
@@ -58,8 +58,8 @@ task:
   prompt: "Test prompt"
 evaluation:
   gates:
-    - type: min_notes
-      count: 1
+    - type: command_succeeds
+      command: "true"
 run:
   timeout_secs: 300
 "#;

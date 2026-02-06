@@ -126,54 +126,60 @@ pub struct JudgeConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Gate {
-    /// Asserts minimum number of notes created
-    MinNotes {
-        /// Required minimum count
-        count: usize,
-    },
-    /// Asserts minimum number of links created
-    MinLinks {
-        /// Required minimum count
-        count: usize,
-    },
-    /// Asserts a search query returns results
-    SearchHit {
-        /// Search query string
-        query: String,
-    },
-    /// Asserts a specific note exists by ID
-    NoteExists {
-        /// Note ID to check for
-        id: String,
-    },
-    /// Asserts a specific link exists
-    LinkExists {
-        /// Source note ID
-        from: String,
-        /// Target note ID
-        to: String,
-        /// Link type (e.g., "related", "derived-from")
-        link_type: String,
-    },
-    /// Asserts a specific tag exists in the store
-    TagExists {
-        /// Tag name to check for
-        tag: String,
-    },
-    /// Asserts note content contains a substring
-    ContentContains {
-        /// Note ID to check
-        id: String,
-        /// Substring to search for
-        substring: String,
-    },
     /// Asserts a shell command succeeds
     CommandSucceeds {
         /// Shell command to execute
         command: String,
     },
-    /// Asserts doctor check passes (no issues found)
-    DoctorPasses,
+    /// Asserts command stdout contains a substring
+    CommandOutputContains {
+        /// Shell command to execute
+        command: String,
+        /// Substring that must be present in stdout
+        substring: String,
+    },
+    /// Asserts command stdout matches a regex pattern
+    CommandOutputMatches {
+        /// Shell command to execute
+        command: String,
+        /// Regex pattern that must match stdout
+        pattern: String,
+    },
+    /// Asserts JSON output contains data matching a path assertion
+    CommandJsonPath {
+        /// Shell command to execute
+        command: String,
+        /// JSON path to evaluate
+        path: String,
+        /// Assertion expression to apply to resolved value
+        assertion: String,
+    },
+    /// Asserts a file exists in the fixture directory
+    FileExists {
+        /// Relative path to the target file
+        path: String,
+    },
+    /// Asserts file contents contain a substring
+    FileContains {
+        /// Relative path to the target file
+        path: String,
+        /// Substring to search for
+        substring: String,
+    },
+    /// Asserts file contents match a regex pattern
+    FileMatches {
+        /// Relative path to the target file
+        path: String,
+        /// Regex pattern that must match file contents
+        pattern: String,
+    },
     /// Asserts no errors in the transcript
     NoTranscriptErrors,
+    /// Asserts a script command passes and reports status
+    Script {
+        /// Shell command to execute
+        command: String,
+        /// Human-readable gate description
+        description: String,
+    },
 }
