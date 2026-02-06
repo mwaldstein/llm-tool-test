@@ -519,8 +519,8 @@ fn eval_script(
         };
     }
 
-    // Fall back to exit code
-    let passed = result.exit_code == 0;
+    // Fall back to exit code (consider both exit code and timeout)
+    let passed = result.succeeded();
     GateResult {
         gate_type: "Script".to_string(),
         passed,
