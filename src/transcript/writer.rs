@@ -283,6 +283,30 @@ impl TranscriptWriter {
             content.push('\n');
         }
 
+        if !evaluation.evaluator_results.is_empty() {
+            content.push_str("## Custom Evaluator Results\n\n");
+            for result in &evaluation.evaluator_results {
+                if let Some(ref error) = result.error {
+                    content.push_str(&format!("**{}**: ❌ Failed - {}\n\n", result.name, error));
+                } else {
+                    let status = "✅";
+                    if let Some(score) = result.score {
+                        content.push_str(&format!(
+                            "**{}**: {} Score: {:.2}",
+                            result.name, status, score
+                        ));
+                    } else {
+                        content.push_str(&format!("**{}**: {}", result.name, status));
+                    }
+                    if let Some(ref summary) = result.summary {
+                        content.push_str(&format!(" - {}\n\n", summary));
+                    } else {
+                        content.push_str("\n\n");
+                    }
+                }
+            }
+        }
+
         content.push_str("## Human Review\n\n");
         content.push_str("<!--\n");
         content.push_str("Human Score: __/5\n\n");

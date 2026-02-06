@@ -67,6 +67,7 @@ fn test_write_evaluation_basic() {
             "**Highlights:**\nGood structure".to_string(),
             "**Criteria Scores:**\n- relevance: 0.85\n- clarity: 0.90".to_string(),
         ],
+        evaluator_results: vec![],
     };
 
     writer.write_evaluation(&evaluation).unwrap();
@@ -117,6 +118,7 @@ fn test_write_evaluation_without_judge_score() {
         cost_usd: Some(0.01),
         composite_score: 0.75,
         judge_feedback: vec![],
+        evaluator_results: vec![],
     };
 
     writer.write_evaluation(&evaluation).unwrap();

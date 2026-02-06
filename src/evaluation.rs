@@ -591,6 +591,9 @@ pub struct EvaluationMetrics {
     pub judge_response: Option<JudgeResponse>,
     pub efficiency: EfficiencyMetrics,
     pub composite_score: f64,
+    /// Results from custom evaluator scripts
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub evaluator_results: Vec<EvaluatorResult>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -598,6 +601,25 @@ pub struct GateResult {
     pub gate_type: String,
     pub passed: bool,
     pub message: String,
+}
+
+/// Result from a custom evaluator script.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EvaluatorResult {
+    /// Name of the evaluator
+    pub name: String,
+    /// Optional metrics as JSON value
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metrics: Option<Value>,
+    /// Optional score (0.0-1.0 or unbounded depending on evaluator)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub score: Option<f64>,
+    /// Human-readable summary
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>,
+    /// Error message if evaluator failed
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
 }
 
 fn evaluate_gates(gates: &[Gate], ctx: &EvaluationContext<'_>) -> (Vec<GateResult>, usize) {
@@ -699,6 +721,109 @@ fn maybe_run_judge(
     Ok((None, None))
 }
 
+/// Run custom evaluator scripts from scenario configuration.
+fn run_evaluators(
+    scenario: &Scenario,
+    script_runner: Option<&ScriptRunner>,
+) -> Vec<EvaluatorResult> {
+    let mut results = Vec::new();
+
+    if let Some(scripts) = &scenario.scripts {
+        for entry in &scripts.evaluators {
+            println!("Running evaluator '{}'...", entry.name);
+
+            let result = if let Some(runner) = script_runner {
+                match runner.run(&entry.command, entry.timeout_secs) {
+                    Ok(script_result) => {
+                        if script_result.timed_out {
+                            EvaluatorResult {
+                                name: entry.name.clone(),
+                                metrics: None,
+                                score: None,
+                                summary: None,
+                                error: Some(format!(
+                                    "Timed out after {} seconds",
+                                    entry.timeout_secs
+                                )),
+                            }
+                        } else if script_result.exit_code != 0 {
+                            EvaluatorResult {
+                                name: entry.name.clone(),
+                                metrics: None,
+                                score: None,
+                                summary: None,
+                                error: Some(format!(
+                                    "Exit code {}: {}",
+                                    script_result.exit_code, script_result.stderr
+                                )),
+                            }
+                        } else {
+                            // Try to parse stdout as JSON
+                            match serde_json::from_str::<Value>(&script_result.stdout) {
+                                Ok(json) => {
+                                    let metrics = json.get("metrics").cloned();
+                                    let score = json.get("score").and_then(|v| v.as_f64());
+                                    let summary = json
+                                        .get("summary")
+                                        .and_then(|v| v.as_str())
+                                        .map(|s| s.to_string());
+
+                                    EvaluatorResult {
+                                        name: entry.name.clone(),
+                                        metrics,
+                                        score,
+                                        summary,
+                                        error: None,
+                                    }
+                                }
+                                Err(e) => {
+                                    // Not valid JSON, use stdout as summary
+                                    EvaluatorResult {
+                                        name: entry.name.clone(),
+                                        metrics: None,
+                                        score: None,
+                                        summary: Some(script_result.stdout.trim().to_string()),
+                                        error: Some(format!("Invalid JSON output: {}", e)),
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => EvaluatorResult {
+                        name: entry.name.clone(),
+                        metrics: None,
+                        score: None,
+                        summary: None,
+                        error: Some(format!("Execution failed: {}", e)),
+                    },
+                }
+            } else {
+                EvaluatorResult {
+                    name: entry.name.clone(),
+                    metrics: None,
+                    score: None,
+                    summary: None,
+                    error: Some("Script runner not available".to_string()),
+                }
+            };
+
+            if result.error.is_some() {
+                eprintln!("Evaluator '{}' failed: {:?}", entry.name, result.error);
+            } else if result.summary.is_some() {
+                println!(
+                    "Evaluator '{}' result: {}",
+                    entry.name,
+                    result.summary.as_ref().unwrap()
+                );
+            }
+
+            results.push(result);
+        }
+    }
+
+    results
+}
+
 fn compute_efficiency_or_default(
     env_root: &Path,
     target_binary: &str,
@@ -744,6 +869,7 @@ fn build_metrics(
         judge_response,
         efficiency,
         composite_score,
+        evaluator_results: Vec::new(),
     }
 }
 
@@ -764,7 +890,7 @@ pub fn evaluate(
 
     let (details, gates_passed) = evaluate_gates(&scenario.evaluation.gates, &ctx);
     let (judge_score, judge_response) = maybe_run_judge(scenario, env_root, no_judge)?;
-    let metrics = build_metrics(
+    let mut metrics = build_metrics(
         scenario,
         env_root,
         details,
@@ -772,6 +898,9 @@ pub fn evaluate(
         judge_score,
         judge_response,
     );
+
+    // Run custom evaluators after gates and judge evaluation
+    metrics.evaluator_results = run_evaluators(scenario, script_runner);
 
     Ok(metrics)
 }
@@ -985,5 +1114,171 @@ mod tests {
         let result = eval_script("true", "no runner", None);
         assert!(!result.passed);
         assert!(result.message.contains("Script runner not available"));
+    }
+
+    #[test]
+    fn evaluator_script_success_with_json_output() {
+        let temp = tempfile::tempdir().unwrap();
+        let runner = ScriptRunner::new(
+            temp.path().to_path_buf(),
+            std::path::PathBuf::from("/tmp/results"),
+            "test".to_string(),
+            "test_agent".to_string(),
+            "test_model".to_string(),
+            None,
+            None,
+            std::collections::HashMap::new(),
+        );
+
+        // Create evaluator scenario
+        let mut scenario = create_test_scenario();
+        scenario.scripts = Some(crate::scenario::types::ScriptsConfig {
+            post: vec![],
+            evaluators: vec![crate::scenario::types::EvaluatorEntry {
+                command: "echo '{\"score\": 0.85, \"summary\": \"Good performance\", \"metrics\": {\"tokens\": 150}}'".to_string(),
+                name: "performance_check".to_string(),
+                timeout_secs: 60,
+            }],
+        });
+
+        let results = run_evaluators(&scenario, Some(&runner));
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].name, "performance_check");
+        assert!(results[0].error.is_none());
+        assert_eq!(results[0].score, Some(0.85));
+        assert_eq!(results[0].summary, Some("Good performance".to_string()));
+        assert!(results[0].metrics.is_some());
+    }
+
+    #[test]
+    fn evaluator_script_failure_exit_code() {
+        let temp = tempfile::tempdir().unwrap();
+        let runner = ScriptRunner::new(
+            temp.path().to_path_buf(),
+            std::path::PathBuf::from("/tmp/results"),
+            "test".to_string(),
+            "test_agent".to_string(),
+            "test_model".to_string(),
+            None,
+            None,
+            std::collections::HashMap::new(),
+        );
+
+        let mut scenario = create_test_scenario();
+        scenario.scripts = Some(crate::scenario::types::ScriptsConfig {
+            post: vec![],
+            evaluators: vec![crate::scenario::types::EvaluatorEntry {
+                command: "exit 1".to_string(),
+                name: "failing_eval".to_string(),
+                timeout_secs: 60,
+            }],
+        });
+
+        let results = run_evaluators(&scenario, Some(&runner));
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].name, "failing_eval");
+        assert!(results[0].error.is_some());
+        assert!(results[0].error.as_ref().unwrap().contains("Exit code 1"));
+    }
+
+    #[test]
+    fn evaluator_script_timeout() {
+        let temp = tempfile::tempdir().unwrap();
+        let runner = ScriptRunner::new(
+            temp.path().to_path_buf(),
+            std::path::PathBuf::from("/tmp/results"),
+            "test".to_string(),
+            "test_agent".to_string(),
+            "test_model".to_string(),
+            None,
+            None,
+            std::collections::HashMap::new(),
+        );
+
+        let mut scenario = create_test_scenario();
+        scenario.scripts = Some(crate::scenario::types::ScriptsConfig {
+            post: vec![],
+            evaluators: vec![crate::scenario::types::EvaluatorEntry {
+                command: "sleep 10".to_string(),
+                name: "slow_eval".to_string(),
+                timeout_secs: 1, // 1 second timeout
+            }],
+        });
+
+        let results = run_evaluators(&scenario, Some(&runner));
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].name, "slow_eval");
+        assert!(results[0].error.is_some());
+        assert!(results[0].error.as_ref().unwrap().contains("Timed out"));
+    }
+
+    #[test]
+    fn evaluator_no_scripts_config() {
+        let temp = tempfile::tempdir().unwrap();
+        let runner = ScriptRunner::new(
+            temp.path().to_path_buf(),
+            std::path::PathBuf::from("/tmp/results"),
+            "test".to_string(),
+            "test_agent".to_string(),
+            "test_model".to_string(),
+            None,
+            None,
+            std::collections::HashMap::new(),
+        );
+
+        let scenario = create_test_scenario(); // No scripts config
+        let results = run_evaluators(&scenario, Some(&runner));
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn evaluator_no_runner_returns_error() {
+        let mut scenario = create_test_scenario();
+        scenario.scripts = Some(crate::scenario::types::ScriptsConfig {
+            post: vec![],
+            evaluators: vec![crate::scenario::types::EvaluatorEntry {
+                command: "echo test".to_string(),
+                name: "no_runner_test".to_string(),
+                timeout_secs: 60,
+            }],
+        });
+
+        let results = run_evaluators(&scenario, None);
+        assert_eq!(results.len(), 1);
+        assert!(results[0].error.is_some());
+        assert!(results[0]
+            .error
+            .as_ref()
+            .unwrap()
+            .contains("Script runner not available"));
+    }
+
+    fn create_test_scenario() -> Scenario {
+        use crate::scenario::{Evaluation, TargetConfig, Task};
+
+        Scenario {
+            name: "test".to_string(),
+            description: "Test scenario".to_string(),
+            template_folder: "test_fixture".to_string(),
+            target: TargetConfig {
+                binary: "test".to_string(),
+                command_pattern: None,
+                health_check: None,
+                env: None,
+            },
+            task: Task {
+                prompt: "Test prompt".to_string(),
+            },
+            evaluation: Evaluation {
+                gates: vec![],
+                judge: None,
+            },
+            tier: 0,
+            tool_matrix: None,
+            setup: None,
+            tags: vec![],
+            run: None,
+            scripts: None,
+        }
     }
 }

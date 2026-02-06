@@ -73,6 +73,15 @@ pub struct EvaluationReport {
     pub cost_usd: Option<f64>,
     pub composite_score: f64,
     pub judge_feedback: Vec<String>,
+    pub evaluator_results: Vec<EvaluatorResultSummary>,
+}
+
+#[derive(Debug)]
+pub struct EvaluatorResultSummary {
+    pub name: String,
+    pub score: Option<f64>,
+    pub summary: Option<String>,
+    pub error: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -108,6 +108,17 @@ pub fn write_transcript_files(
         Vec::new()
     };
 
+    let evaluator_results = metrics
+        .evaluator_results
+        .iter()
+        .map(|e| crate::transcript::types::EvaluatorResultSummary {
+            name: e.name.clone(),
+            score: e.score,
+            summary: e.summary.clone(),
+            error: e.error.clone(),
+        })
+        .collect();
+
     let evaluation = crate::transcript::EvaluationReport {
         scenario_id: s.name.clone(),
         tool: tool.to_string(),
@@ -120,6 +131,7 @@ pub fn write_transcript_files(
         cost_usd: cost,
         composite_score: metrics.composite_score,
         judge_feedback,
+        evaluator_results,
     };
     writer.write_evaluation(&evaluation)?;
 

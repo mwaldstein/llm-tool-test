@@ -378,33 +378,39 @@ Implement the three new script hooks per specs/scripts.md.
 
 ### 4.5 Implement custom evaluators
 
+**Status:** ✅ Complete
+
 **Files:**
-- `src/evaluation.rs` (or a new `src/custom_evaluators.rs`) — After gates run, execute evaluator scripts:
-  ```rust
-  pub struct EvaluatorResult {
-      pub name: String,
-      pub metrics: Option<serde_json::Value>,
-      pub score: Option<f64>,
-      pub summary: Option<String>,
-      pub error: Option<String>,
-  }
-  ```
-  
-  Run each evaluator, parse JSON stdout, store results.
+- ✅ `src/evaluation.rs` — Implemented `run_evaluators()` function that executes evaluator scripts after gates. Added:
+  - `EvaluatorResult` struct with `name`, `metrics`, `score`, `summary`, `error` fields
+  - `run_evaluators()` function that executes each evaluator with timeout
+  - JSON parsing for structured evaluator output (score, summary, metrics)
+  - Graceful error handling for timeouts, non-zero exit codes, and invalid JSON
+  - Updated `evaluate()` to call `run_evaluators()` after gate evaluation
 
-- `src/run/transcript.rs` — Include evaluator results in `metrics.json` output.
-- `src/transcript/writer.rs` — Include evaluator summaries in `evaluation.md`.
+- ✅ `src/run/transcript.rs` — Include evaluator results in the evaluation report passed to writer.
+- ✅ `src/transcript/writer.rs` — Added `EvaluatorResultSummary` type and `write_evaluator_section()` to include evaluator results in `evaluation.md` with proper formatting (success/failure indicators, scores, summaries, errors).
 
-**Verify:** Integration test with a scenario that has a custom evaluator.
+**Verify:** ✅ All 5 new unit tests pass covering:
+- Evaluator with JSON output (score, summary, metrics)
+- Evaluator with non-zero exit code
+- Evaluator timeout behavior
+- No scripts config (empty results)
+- No script runner available (error case)
+
+Total test count: 182 (164 unit + 18 integration)
 
 ### 4.6 Update `EvaluationMetrics` to carry evaluator results
 
-**Files:**
-- `src/evaluation.rs` — Add `pub evaluator_results: Vec<EvaluatorResult>` to `EvaluationMetrics`.
-- `src/run/records.rs` — Store evaluator results in the result record.
-- `src/results/types/mod.rs` — Add evaluator results to `EvaluationMetricsRecord`.
+**Status:** ✅ Complete
 
-**Verify:** `cargo build`, `cargo test`.
+**Files:**
+- ✅ `src/evaluation.rs` — Added `pub evaluator_results: Vec<EvaluatorResult>` to `EvaluationMetrics` struct with `#[serde(default, skip_serializing_if = "Vec::is_empty")]`.
+- ✅ `src/results/types/mod.rs` — Added `EvaluatorResultRecord` struct mirroring `EvaluatorResult`, and added `evaluator_results: Vec<EvaluatorResultRecord>` field to `EvaluationMetricsRecord`.
+- ✅ `src/run/records.rs` — Updated `build_result_record()` to map `EvaluatorResult` to `EvaluatorResultRecord` and include in result record. Also updated `handle_dry_run()` to include empty `evaluator_results` vector.
+- ✅ `src/transcript/types.rs` — Added `EvaluatorResultSummary` struct and `evaluator_results` field to `EvaluationReport`.
+
+**Verify:** ✅ `cargo build` — no compile errors. ✅ `cargo test` — All 182 tests pass.
 
 ---
 

@@ -15,7 +15,7 @@ pub fn build_result_record(
     cost: Option<f64>,
     transcript_path: String,
 ) -> ResultRecord {
-    use crate::results::{EfficiencyMetricsRecord, GateResultRecord};
+    use crate::results::{EfficiencyMetricsRecord, EvaluatorResultRecord, GateResultRecord};
 
     ResultRecord {
         id: crate::results::generate_run_id(),
@@ -49,6 +49,17 @@ pub fn build_result_record(
                 iteration_ratio: metrics.efficiency.iteration_ratio,
             },
             composite_score: metrics.composite_score,
+            evaluator_results: metrics
+                .evaluator_results
+                .into_iter()
+                .map(|e| EvaluatorResultRecord {
+                    name: e.name,
+                    metrics: e.metrics,
+                    score: e.score,
+                    summary: e.summary,
+                    error: e.error,
+                })
+                .collect(),
         },
         judge_score: metrics.judge_score,
         outcome,
@@ -91,6 +102,7 @@ pub fn handle_dry_run(
                 iteration_ratio: 0.0,
             },
             composite_score: 0.0,
+            evaluator_results: vec![],
         },
         judge_score: None,
         outcome: "Dry run".to_string(),

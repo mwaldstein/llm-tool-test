@@ -66,6 +66,28 @@ pub struct EvaluationMetricsRecord {
     pub efficiency: EfficiencyMetricsRecord,
     /// Composite quality score (0.0-1.0)
     pub composite_score: f64,
+    /// Results from custom evaluators
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub evaluator_results: Vec<EvaluatorResultRecord>,
+}
+
+/// Record of a custom evaluator result.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EvaluatorResultRecord {
+    /// Name of the evaluator
+    pub name: String,
+    /// Optional metrics as JSON value
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metrics: Option<serde_json::Value>,
+    /// Optional score
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub score: Option<f64>,
+    /// Human-readable summary
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>,
+    /// Error message if evaluator failed
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
 }
 
 /// Efficiency metrics measuring tool interaction patterns.
