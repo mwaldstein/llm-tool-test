@@ -41,6 +41,9 @@ pub struct Scenario {
     /// Optional runtime configuration
     #[serde(default)]
     pub run: Option<RunConfig>,
+    /// Optional scripts configuration for hooks and evaluators
+    #[serde(default)]
+    pub scripts: Option<ScriptsConfig>,
 }
 
 /// Target tool configuration for a scenario.
@@ -182,4 +185,45 @@ pub enum Gate {
         /// Human-readable gate description
         description: String,
     },
+}
+
+/// Scripts configuration for scenario execution hooks.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScriptsConfig {
+    /// Post-execution scripts to run after agent completes
+    #[serde(default)]
+    pub post: Vec<ScriptEntry>,
+    /// Custom evaluator scripts for scoring
+    #[serde(default)]
+    pub evaluators: Vec<EvaluatorEntry>,
+}
+
+/// A script entry for post-execution hooks.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScriptEntry {
+    /// Shell command to execute
+    pub command: String,
+    /// Timeout in seconds (default: 30)
+    #[serde(default = "default_script_timeout")]
+    pub timeout_secs: u64,
+}
+
+/// A custom evaluator script entry.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EvaluatorEntry {
+    /// Shell command to execute
+    pub command: String,
+    /// Name of the evaluator for reporting
+    pub name: String,
+    /// Timeout in seconds (default: 60)
+    #[serde(default = "default_evaluator_timeout")]
+    pub timeout_secs: u64,
+}
+
+fn default_script_timeout() -> u64 {
+    30
+}
+
+fn default_evaluator_timeout() -> u64 {
+    60
 }

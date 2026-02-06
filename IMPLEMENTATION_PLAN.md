@@ -240,8 +240,10 @@ Implement the three new script hooks per specs/scripts.md.
 
 ### 4.1 Add scripts config to scenario types
 
+**Status:** ✅ Complete
+
 **Files:**
-- `src/scenario/types.rs` — Add:
+- ✅ `src/scenario/types.rs` — Added:
   ```rust
   #[derive(Debug, Clone, Serialize, Deserialize)]
   pub struct ScriptsConfig {
@@ -271,12 +273,14 @@ Implement the three new script hooks per specs/scripts.md.
   ```
   Add `#[serde(default)] pub scripts: Option<ScriptsConfig>` to `Scenario`.
 
-**Verify:** `cargo build`. Existing scenarios without `scripts:` should still parse (it's optional).
+**Verify:** ✅ `cargo build` — no compile errors. All 149 tests pass. Existing scenarios without `scripts:` still parse correctly.
 
 ### 4.2 Implement script runner utility
 
+**Status:** ✅ Complete
+
 **Files:**
-- New file: `src/script_runner.rs` — A utility for running scripts in the fixture directory with the correct environment variables:
+- ✅ New file: `src/script_runner.rs` — A utility for running scripts in the fixture directory with the correct environment variables:
   ```rust
   pub struct ScriptRunner {
       fixture_dir: PathBuf,
@@ -304,7 +308,7 @@ Implement the three new script hooks per specs/scripts.md.
   - Enforces timeout (use `wait-timeout` crate, already a dependency).
   - Returns `ScriptResult`.
 
-**Verify:** Unit tests with simple scripts (echo, exit 0, exit 1, timeout).
+**Verify:** ✅ Unit tests for echo, exit codes (success/failure), timeout behavior, stderr capture, fixture directory execution, and environment variable propagation. All 8 tests pass. Total test count: 171 (154 unit + 17 integration).
 
 ### 4.3 Implement post-execution scripts
 

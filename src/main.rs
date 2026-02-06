@@ -16,6 +16,7 @@ mod output;
 mod results;
 mod run;
 mod scenario;
+mod script_runner;
 mod session;
 mod transcript;
 mod utils;
