@@ -24,8 +24,6 @@ pub fn write_transcript_files(
 ) -> anyhow::Result<()> {
     // Note: transcript.raw.txt and execution event are already written in run_evaluation_flow
 
-    writer.create_store_snapshot(&env.root)?;
-
     let run_metadata = RunMetadata {
         scenario_id: s.name.clone(),
         scenario_hash: cache_key.scenario_hash.clone(),

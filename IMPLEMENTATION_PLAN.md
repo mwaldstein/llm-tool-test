@@ -12,11 +12,14 @@ These changes remove dead code and qipu coupling. No new functionality.
 
 ### 1.1 Remove `create_store_snapshot` and its call site
 
+**Status:** ✅ Complete
+
 **Files:**
 - `src/transcript/writer.rs` — Delete `create_store_snapshot()` (lines 143–177) and `copy_dir()` (lines 180–197). Remove the `Store Snapshot` link from `write_evaluation()` (line 382).
 - `src/run/transcript.rs` — Remove the call `writer.create_store_snapshot(&env.root)?;` (line 27).
+- `src/transcript/tests/writer_tests.rs` — Removed test assertion for Store Snapshot link.
 
-**Verify:** `cargo build` — no compile errors. `cargo test` — no test failures.
+**Verify:** `cargo build` — no compile errors. `cargo test` — test for writer updated to remove snapshot assertion.
 
 ### 1.2 Remove `QualityMetrics` / `StoreAnalyzer` from evaluation
 

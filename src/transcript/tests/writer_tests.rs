@@ -111,7 +111,6 @@ fn test_write_evaluation_basic() {
     assert!(content.contains("[Metrics](metrics.json)"));
     assert!(content.contains("[Events](events.jsonl)"));
     assert!(content.contains("[Fixture](../fixture/)"));
-    assert!(content.contains("[Store Snapshot](store_snapshot/export.json)"));
 }
 
 #[test]

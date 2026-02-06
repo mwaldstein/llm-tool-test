@@ -140,62 +140,6 @@ impl TranscriptWriter {
         Ok(())
     }
 
-    pub fn create_store_snapshot(&self, work_dir: &std::path::Path) -> anyhow::Result<()> {
-        let snapshot_dir = self.base_dir.join("store_snapshot");
-        fs::create_dir_all(&snapshot_dir)?;
-
-        let qipu_dir = work_dir.join(".qipu");
-
-        if qipu_dir.exists() {
-            let snapshot_qipu_dir = snapshot_dir.join(".qipu");
-            self.copy_dir(&qipu_dir, &snapshot_qipu_dir)?;
-        }
-
-        let output = std::process::Command::new("qipu")
-            .arg("dump")
-            .arg("--format")
-            .arg("json")
-            .current_dir(work_dir)
-            .output();
-
-        match output {
-            Ok(result) if result.status.success() => {
-                fs::write(snapshot_dir.join("export.json"), result.stdout)?;
-                Ok(())
-            }
-            Ok(result) => {
-                eprintln!(
-                    "Warning: Failed to create store snapshot: {}",
-                    String::from_utf8_lossy(&result.stderr)
-                );
-                Ok(())
-            }
-            Err(e) => {
-                eprintln!("Warning: Failed to run qipu dump: {}", e);
-                Ok(())
-            }
-        }
-    }
-
-    fn copy_dir(&self, src: &PathBuf, dst: &PathBuf) -> anyhow::Result<()> {
-        fs::create_dir_all(dst)?;
-
-        for entry in fs::read_dir(src)? {
-            let entry = entry?;
-            let file_type = entry.file_type()?;
-            let src_path = entry.path();
-            let dst_path = dst.join(entry.file_name());
-
-            if file_type.is_file() {
-                fs::copy(&src_path, &dst_path)?;
-            } else if file_type.is_dir() {
-                self.copy_dir(&src_path, &dst_path)?;
-            }
-        }
-
-        Ok(())
-    }
-
     fn write_report_header(&self, report: &RunReport, content: &mut String) {
         content.push_str("# Test Run Report\n\n");
         content.push_str("## Scenario\n\n");
@@ -379,7 +323,6 @@ impl TranscriptWriter {
         content.push_str("- [Metrics](metrics.json)\n");
         content.push_str("- [Events](events.jsonl)\n");
         content.push_str("- [Fixture](../fixture/)\n");
-        content.push_str("- [Store Snapshot](store_snapshot/export.json)\n");
 
         fs::write(self.results_dir.join("evaluation.md"), content)?;
         Ok(())
