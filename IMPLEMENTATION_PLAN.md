@@ -1,0 +1,515 @@
+# Implementation Plan: Scripts Support & Snapshot Removal
+
+This plan implements [specs/scripts.md](specs/scripts.md) and removes the snapshot mechanism per the updated specs. It also removes qipu-specific code from the internals, since the specs now define a tool-agnostic framework.
+
+The plan is ordered so each step produces a compiling, testable codebase. Steps within a phase can be done in order. Phases should be done sequentially.
+
+---
+
+## Phase 1: Remove Snapshot & Qipu-Specific Code
+
+These changes remove dead code and qipu coupling. No new functionality.
+
+### 1.1 Remove `create_store_snapshot` and its call site
+
+**Files:**
+- `src/transcript/writer.rs` — Delete `create_store_snapshot()` (lines 143–177) and `copy_dir()` (lines 180–197). Remove the `Store Snapshot` link from `write_evaluation()` (line 382).
+- `src/run/transcript.rs` — Remove the call `writer.create_store_snapshot(&env.root)?;` (line 27).
+
+**Verify:** `cargo build` — no compile errors. `cargo test` — no test failures.
+
+### 1.2 Remove `QualityMetrics` / `StoreAnalyzer` from evaluation
+
+The `store_analysis.rs` module and `QualityMetrics` are qipu-specific (they parse a notes/links export format). Remove them from the evaluation pipeline. This is a larger change that touches multiple files.
+
+**Files:**
+- `src/store_analysis.rs` — Delete the entire file.
+- `src/evaluation.rs` — Remove `use crate::store_analysis::QualityMetrics;`. Remove calls to `compute_quality_or_default()`. Remove quality from `EvaluationMetrics` struct and `build_metrics()`. Remove the quality component from `compute_composite_score()` in `eval_helpers.rs`.
+- `src/eval_helpers.rs` — Delete `compute_quality_metrics()`. Update `compute_composite_score()` to remove the quality weight (redistribute: e.g., judge 50%, gates 35%, efficiency 15% — or just remove composite scoring entirely per the spec recommendation).
+- `src/run/transcript.rs` — Remove `quality: ...` fields from `RunReport` and `EvaluationReport` construction.
+- `src/run/records.rs` — Remove `quality: QualityMetricsRecord { ... }` from `build_result_record()` and `handle_dry_run()`.
+- `src/results/types/mod.rs` — Delete `QualityMetricsRecord` struct. Remove `quality` field from `EvaluationMetricsRecord`. Remove `note_count` and `link_count` fields (these are qipu-specific counts).
+- `src/transcript/types.rs` — Delete `QualityReport` struct. Remove `quality` field from `RunReport`. Remove `note_count` and `link_count` from `RunReport` and `EvaluationReport`.
+- `src/transcript/writer.rs` — Delete `write_quality_section()`. Remove quality from `write_report()`. Remove note/link counts from `write_evaluation_section()` and `write_evaluation()`.
+- `src/output.rs` — Remove `Notes:` and `Links:` lines from `print_result_summary()`.
+- `src/main.rs` or `src/lib.rs` — Remove `mod store_analysis;` declaration.
+
+**Verify:** `cargo build`, `cargo test`. Some tests in `store_analysis.rs` will be deleted with the file. Check that remaining tests pass.
+
+### 1.3 Remove qipu-specific eval helpers
+
+**Files:**
+- `src/eval_helpers.rs` — Delete `get_qipu_path()`, `run_qipu_json()`, and `create_note_with_stdin()`. These are qipu-specific. The functions they support (`count_notes`, `count_links`, `search_hit`, `note_exists`, `link_exists`, `tag_exists`, `content_contains`, `command_succeeds`, `doctor_passes`) all depend on `run_qipu_json()` or `get_qipu_path()`, so they need to be removed or stubbed.
+- `src/evaluation.rs` — The current gate evaluator calls these functions. Since we're replacing gates in Phase 3, for now stub the domain-specific gate evaluators to return a "not implemented" failure, or remove them if Phase 3 is done immediately after.
+- `src/eval_tests_doctor.rs` — Delete this file (qipu doctor tests).
+- `src/eval_tests_gates.rs` — Review; delete or stub tests that depend on qipu binary.
+
+**Decision point:** If Phase 3 (new gates) is done immediately after Phase 1, it's cleaner to delete the old gate implementations here and implement new ones in Phase 3. If there's a gap, stub them.
+
+**Verify:** `cargo build`, `cargo test`.
+
+### 1.4 Remove qipu references from run metadata and cache
+
+**Files:**
+- `src/transcript/types.rs` — Rename `qipu_version` and `qipu_commit` in `RunMetadata` to `target_tool_version` (single field, or remove entirely — the framework doesn't know the target tool's version unless told).
+- `src/run/transcript.rs` — Update `RunMetadata` construction to remove qipu_version/qipu_commit.
+- `src/run/records.rs` — Rename `qipu_commit` to `tool_version` or remove from `ResultRecord`.
+- `src/results/types/mod.rs` — Rename `qipu_commit` field in `ResultRecord`.
+- `src/results/utils.rs` — Rename `get_qipu_version()` to something generic or remove it. It currently runs `git rev-parse HEAD` in the parent directory, which was qipu-specific. Consider making this configurable or removing it.
+- `src/run/mod.rs` — Update all references to `qipu_version`.
+- `src/run/cache.rs` — Update `compute_cache_key()` parameter name.
+- `src/results/types/cache_key.rs` — Update field names.
+
+**Verify:** `cargo build`, `cargo test`, `cargo clippy`.
+
+### 1.5 Remove `get_prime_output` from fixture
+
+**Files:**
+- `src/fixture.rs` — Delete `get_prime_output()` (lines 30–45). This runs `qipu prime`, which is qipu-specific.
+- `src/run/setup.rs` — Remove the call to `env.get_prime_output()` (line 27) and the `prime_output` variable.
+- `src/run/mod.rs` — Remove `prime_output` from `compute_cache_key()` call. Update `compute_cache_key` to not require it.
+- `src/run/cache.rs` — Remove `prime_output` parameter from `compute_cache_key()`.
+- `src/results/types/cache_key.rs` — Remove prime output from cache key computation.
+
+**Verify:** `cargo build`, `cargo test`.
+
+### 1.6 Remove qipu-specific transcript analyzer regex
+
+**Files:**
+- `src/transcript/analyzer.rs` — The hardcoded `Regex::new(r"qipu\s+(\S+)")` needs to become configurable. For now, change it to accept a pattern parameter or make it a no-op that returns empty metrics if no pattern is configured. This will be properly addressed when the scenario's `target.command_pattern` is wired through in Phase 2.
+- `src/transcript/tests/analyzer.rs` — Update test transcript strings from `"qipu create ..."` to a generic placeholder, or parameterize them.
+
+**Verify:** `cargo build`, `cargo test`.
+
+---
+
+## Phase 2: Target Tool Configuration
+
+Add the `target` config to scenarios so the framework knows what tool is being tested.
+
+### 2.1 Add target config to scenario types
+
+**Files:**
+- `src/scenario/types.rs` — Add a `TargetConfig` struct:
+  ```rust
+  #[derive(Debug, Clone, Serialize, Deserialize)]
+  pub struct TargetConfig {
+      pub binary: String,
+      #[serde(default)]
+      pub command_pattern: Option<String>,
+      #[serde(default)]
+      pub health_check: Option<String>,
+      #[serde(default)]
+      pub env: Option<HashMap<String, String>>,
+  }
+  ```
+  Add `pub target: TargetConfig` to the `Scenario` struct.
+
+**Verify:** `cargo build`. Existing scenario YAML files will need a `target:` section or tests will fail on deserialization. Update test YAML fixtures.
+
+### 2.2 Wire target config through transcript analyzer
+
+**Files:**
+- `src/transcript/analyzer.rs` — Change `TranscriptAnalyzer` methods to accept an optional `command_pattern: &str` parameter instead of hardcoding the regex. Default to matching the target binary name if no pattern is provided.
+- `src/eval_helpers.rs` — Update `compute_efficiency_metrics()` to accept and pass through the command pattern.
+- `src/evaluation.rs` — Pass `scenario.target.command_pattern` to the analyzer.
+
+**Verify:** `cargo build`, `cargo test`. Analyzer tests should pass with the parameterized pattern.
+
+### 2.3 Wire target env vars through execution
+
+**Files:**
+- `src/run/execution.rs` — When launching the adapter, set `target.env` variables in the child process environment.
+- `src/run/setup.rs` — Set `target.env` variables when running setup commands.
+
+**Verify:** `cargo build`, `cargo test`.
+
+### 2.4 Update test fixtures
+
+**Files:**
+- `tests/cli.rs` — Update inline scenario YAML in tests to include `target:` section.
+- `src/run/tests.rs` — Update test scenario YAML.
+- Any YAML files in `fixtures/` or `llm-test-fixtures/` — Add `target:` config.
+
+**Verify:** `cargo test`.
+
+---
+
+## Phase 3: New Generic Gate System
+
+Replace domain-specific gates with generic primitives per specs/evaluation.md.
+
+### 3.1 Define new gate enum
+
+**Files:**
+- `src/scenario/types.rs` — Replace the current `Gate` enum with:
+  ```rust
+  #[derive(Debug, Clone, Serialize, Deserialize)]
+  #[serde(tag = "type", rename_all = "snake_case")]
+  pub enum Gate {
+      CommandSucceeds { command: String },
+      CommandOutputContains { command: String, substring: String },
+      CommandOutputMatches { command: String, pattern: String },
+      CommandJsonPath { command: String, path: String, assertion: String },
+      FileExists { path: String },
+      FileContains { path: String, substring: String },
+      FileMatches { path: String, pattern: String },
+      NoTranscriptErrors,
+      Script { command: String, description: String },
+  }
+  ```
+
+**Verify:** `cargo build` will fail — the evaluator still references old variants. That's expected; fixed in 3.2.
+
+### 3.2 Implement generic gate evaluators
+
+**Files:**
+- `src/evaluation.rs` — Rewrite `GateEvaluator::evaluate()` to handle each new gate type:
+  - `CommandSucceeds` — Run command via `std::process::Command` in `env_root`, check exit code 0.
+  - `CommandOutputContains` — Run command, check stdout contains substring.
+  - `CommandOutputMatches` — Run command, check stdout matches regex.
+  - `CommandJsonPath` — Run command, parse stdout as JSON, evaluate assertion against path. Implement the assertion mini-language: `exists`, `equals <value>`, `contains <substring>`, `len >= N`, `len == N`, `len > N`.
+  - `FileExists` — Check `env_root.join(path).exists()`.
+  - `FileContains` — Read file, check contains substring.
+  - `FileMatches` — Read file, check matches regex.
+  - `NoTranscriptErrors` — Keep existing implementation (reads transcript, checks error count).
+  - `Script` — Implemented in Phase 4.
+
+- `src/eval_helpers.rs` — Remove all qipu-specific helper functions (if not already done in Phase 1). The generic gate evaluators run commands directly; they don't need `run_qipu_json()`.
+
+**Verify:** `cargo build`, `cargo test`. Write unit tests for each gate type using temp directories and mock commands.
+
+### 3.3 Implement `command_json_path` assertion parser
+
+**Files:**
+- New file: `src/json_assertion.rs` (or inline in `evaluation.rs`) — Parse and evaluate assertion strings:
+  - `exists` — value is not null/missing
+  - `equals <value>` — exact equality
+  - `contains <substring>` — string contains
+  - `len >= N`, `len == N`, `len > N` — array/object length
+
+  Use `serde_json::Value` for JSON navigation. Use a simple JSON pointer-style path (e.g., `$.links` → split on `.`, navigate nested objects/arrays).
+
+**Verify:** Unit tests for the assertion parser covering all forms.
+
+### 3.4 Update test fixtures and CLI tests
+
+**Files:**
+- `tests/cli.rs` — Update scenario YAML to use new gate types.
+- `src/scenario/tests/` — Update any scenario parsing tests.
+
+**Verify:** `cargo test --all`.
+
+---
+
+## Phase 4: Scripts System
+
+Implement the three new script hooks per specs/scripts.md.
+
+### 4.1 Add scripts config to scenario types
+
+**Files:**
+- `src/scenario/types.rs` — Add:
+  ```rust
+  #[derive(Debug, Clone, Serialize, Deserialize)]
+  pub struct ScriptsConfig {
+      #[serde(default)]
+      pub post: Vec<ScriptEntry>,
+      #[serde(default)]
+      pub evaluators: Vec<EvaluatorEntry>,
+  }
+
+  #[derive(Debug, Clone, Serialize, Deserialize)]
+  pub struct ScriptEntry {
+      pub command: String,
+      #[serde(default = "default_script_timeout")]
+      pub timeout_secs: u64,
+  }
+
+  #[derive(Debug, Clone, Serialize, Deserialize)]
+  pub struct EvaluatorEntry {
+      pub command: String,
+      pub name: String,
+      #[serde(default = "default_evaluator_timeout")]
+      pub timeout_secs: u64,
+  }
+
+  fn default_script_timeout() -> u64 { 30 }
+  fn default_evaluator_timeout() -> u64 { 60 }
+  ```
+  Add `#[serde(default)] pub scripts: Option<ScriptsConfig>` to `Scenario`.
+
+**Verify:** `cargo build`. Existing scenarios without `scripts:` should still parse (it's optional).
+
+### 4.2 Implement script runner utility
+
+**Files:**
+- New file: `src/script_runner.rs` — A utility for running scripts in the fixture directory with the correct environment variables:
+  ```rust
+  pub struct ScriptRunner {
+      fixture_dir: PathBuf,
+      results_dir: PathBuf,
+      scenario_name: String,
+      agent: String,
+      model: String,
+      transcript_path: Option<PathBuf>,
+      events_path: Option<PathBuf>,
+      target_env: HashMap<String, String>,
+  }
+
+  pub struct ScriptResult {
+      pub exit_code: i32,
+      pub stdout: String,
+      pub stderr: String,
+      pub timed_out: bool,
+  }
+  ```
+
+  The runner:
+  - Sets `LLM_TOOL_TEST_FIXTURE_DIR`, `LLM_TOOL_TEST_RESULTS_DIR`, `LLM_TOOL_TEST_SCENARIO`, `LLM_TOOL_TEST_AGENT`, `LLM_TOOL_TEST_MODEL`, `LLM_TOOL_TEST_TRANSCRIPT`, `LLM_TOOL_TEST_EVENTS` env vars.
+  - Merges `target.env` vars.
+  - Runs the command via `sh -c` in the fixture directory.
+  - Enforces timeout (use `wait-timeout` crate, already a dependency).
+  - Returns `ScriptResult`.
+
+**Verify:** Unit tests with simple scripts (echo, exit 0, exit 1, timeout).
+
+### 4.3 Implement post-execution scripts
+
+**Files:**
+- `src/run/execution.rs` — After agent execution and transcript writing, but before evaluation, run post scripts:
+  ```rust
+  if let Some(scripts) = &scenario.scripts {
+      for entry in &scripts.post {
+          let result = runner.run(&entry.command, entry.timeout_secs)?;
+          writer.append_event(&json!({
+              "type": "post_script",
+              "command": entry.command,
+              "exit_code": result.exit_code,
+              "timed_out": result.timed_out,
+          }))?;
+          if result.exit_code != 0 {
+              eprintln!("Warning: post script failed: {}", entry.command);
+          }
+      }
+  }
+  ```
+  
+  Alternatively, add a new function in `src/run/mod.rs` called between execution and evaluation. The exact placement depends on keeping `run_evaluation_flow()` clean. Consider splitting that function so post scripts slot in naturally.
+
+**Verify:** `cargo build`, write an integration test with a scenario that has a post script.
+
+### 4.4 Implement script gate evaluation
+
+**Files:**
+- `src/evaluation.rs` — Add the `Script` arm to the gate evaluator match:
+  ```rust
+  Gate::Script { command, description } => {
+      let result = script_runner.run(command, 30)?;
+      // Try to parse stdout as JSON with {passed, message}
+      // Fall back to exit code
+      GateResult { ... }
+  }
+  ```
+  
+  This requires the gate evaluator to have access to a `ScriptRunner`. Options:
+  - Pass `ScriptRunner` to `evaluate()` and through to `GateEvaluator`.
+  - Or construct it inside `evaluate()` from the scenario and paths.
+  
+  The `GateEvaluator` trait currently takes `&self` and `env_root: &Path`. For script gates, it also needs the script runner context. Simplest approach: pass a context struct to `evaluate()` that includes both `env_root` and the runner.
+
+**Verify:** Unit test with a script gate that returns JSON. Integration test with a scenario using a script gate.
+
+### 4.5 Implement custom evaluators
+
+**Files:**
+- `src/evaluation.rs` (or a new `src/custom_evaluators.rs`) — After gates run, execute evaluator scripts:
+  ```rust
+  pub struct EvaluatorResult {
+      pub name: String,
+      pub metrics: Option<serde_json::Value>,
+      pub score: Option<f64>,
+      pub summary: Option<String>,
+      pub error: Option<String>,
+  }
+  ```
+  
+  Run each evaluator, parse JSON stdout, store results.
+
+- `src/run/transcript.rs` — Include evaluator results in `metrics.json` output.
+- `src/transcript/writer.rs` — Include evaluator summaries in `evaluation.md`.
+
+**Verify:** Integration test with a scenario that has a custom evaluator.
+
+### 4.6 Update `EvaluationMetrics` to carry evaluator results
+
+**Files:**
+- `src/evaluation.rs` — Add `pub evaluator_results: Vec<EvaluatorResult>` to `EvaluationMetrics`.
+- `src/run/records.rs` — Store evaluator results in the result record.
+- `src/results/types/mod.rs` — Add evaluator results to `EvaluationMetricsRecord`.
+
+**Verify:** `cargo build`, `cargo test`.
+
+---
+
+## Phase 5: Documentation Updates
+
+### 5.1 Update README.md gate types
+
+The README currently lists domain-specific gates under "Domain-specific (evolving)". After Phase 3, remove that section entirely and list only the implemented generic gates. Update any example commands or scenario references.
+
+**Files:**
+- `README.md` — Replace the gate types section with the final implemented set. Remove the "evolving" caveat.
+
+### 5.2 Update llm-tool-test-config.example.toml
+
+Add `[target]` section to the example config showing how to configure the target tool globally.
+
+**Files:**
+- `llm-tool-test-config.example.toml` — Add:
+  ```toml
+  # Target tool configuration (can also be defined per-scenario in YAML)
+  [target]
+  binary = "mytool"
+  command_pattern = "mytool\\s+(\\S+)"
+  health_check = "mytool --version"
+
+  [target.env]
+  MYTOOL_CONFIG = "/path/to/config.toml"
+  ```
+
+### 5.3 Create AGENTS.md for the project itself
+
+The project has no AGENTS.md. Create one with:
+- Build/test/lint commands (`cargo build`, `cargo test`, `cargo clippy`, `cargo fmt --check`)
+- Project structure overview (adapter/, scenario/, transcript/, run/, evaluation)
+- Key conventions (how gates work, how scripts integrate, how scenarios are structured)
+- Pointer to specs/ for detailed design
+
+**Files:**
+- `AGENTS.md` — New file.
+
+### 5.4 Retire SPLIT_PLAN.md
+
+This document is about the mechanical split from qipu and is no longer relevant. The project's identity is now defined by the README and specs.
+
+**Files:**
+- `SPLIT_PLAN.md` — Delete.
+
+### 5.5 Update TODO.md
+
+The TODO still contains pre-split tasks, qipu repo tasks (now removed), and items that are addressed by the implementation plan. Rewrite to reflect actual remaining work after implementation.
+
+**Files:**
+- `TODO.md` — Rewrite. Remove completed items, remove qipu-related items, add any new items discovered during implementation.
+
+### 5.6 Create an example scenario with scripts
+
+The specs use a hypothetical `taskmgr` tool. Create a concrete, runnable example scenario that demonstrates the scripts feature using a simple real tool (e.g., `git` or a shell script that acts as a mock CLI). This serves as both documentation and a smoke test.
+
+**Files:**
+- `fixtures/example_basic/` — New directory with AGENTS.md, README.md, and scripts/.
+- `fixtures/example_basic.yaml` — Scenario YAML using target config, generic gates, and scripts.
+
+### 5.7 Update specs if implementation deviates
+
+Review each spec against the actual implementation and update any details that changed during development (field names, default values, behavior on edge cases).
+
+**Files:**
+- `specs/evaluation.md` — Verify gate types match implementation.
+- `specs/scenarios.md` — Verify schema matches implementation.
+- `specs/scripts.md` — Verify contracts match implementation.
+- `specs/llm-user-validation.md` — Verify architecture description matches implementation.
+
+**Verify:** Read each spec and compare against the code. No stale references, no contradictions.
+
+---
+
+## Phase 6: Cleanup & Consistency
+
+### 6.1 Remove dead code
+
+**Files:**
+- Run `cargo clippy` and address all warnings.
+- Delete any remaining qipu references in source code comments.
+- Remove `src/eval_tests_doctor.rs` and `src/eval_tests_gates.rs` if not already done.
+- Remove `src/eval_tests_score.rs` if it depends on removed quality metrics.
+
+### 6.2 Update evaluation report format
+
+**Files:**
+- `src/transcript/writer.rs` — Update `write_evaluation()` to match the spec:
+  - Remove notes/links counts (already done in Phase 1).
+  - Make composite score conditional (only if scenario configures weights).
+  - Add evaluator summaries section.
+  - Update links section (remove store snapshot link).
+
+### 6.3 Update `print_result_summary`
+
+**Files:**
+- `src/output.rs` — Remove notes/links lines. Make composite score conditional.
+
+### 6.4 Final test pass
+
+```bash
+cargo build
+cargo test
+cargo clippy -- -D warnings
+cargo fmt --check
+```
+
+---
+
+## Test Strategy
+
+Each phase should be verified with `cargo build && cargo test` before moving to the next.
+
+**New tests to write:**
+
+| Phase | Test | Location |
+|-------|------|----------|
+| 3.2 | Unit tests for each generic gate type | `src/evaluation.rs` (mod tests) |
+| 3.3 | Unit tests for JSON assertion parser | `src/json_assertion.rs` (mod tests) |
+| 4.2 | Unit tests for ScriptRunner (env vars, timeout, exit codes) | `src/script_runner.rs` (mod tests) |
+| 4.4 | Script gate with JSON output | `src/evaluation.rs` (mod tests) |
+| 4.4 | Script gate with exit-code-only | `src/evaluation.rs` (mod tests) |
+| 4.5 | Custom evaluator happy path | integration test |
+| 4.5 | Custom evaluator timeout/failure | integration test |
+| E2E | Scenario with post scripts + script gates + evaluator | `tests/cli.rs` |
+
+**Existing tests that will break and need updating:**
+- `src/transcript/tests/analyzer.rs` — hardcoded `qipu` command strings
+- `src/transcript/tests/logging_tests.rs` — uses `"qipu"` as command name
+- `src/eval_tests_doctor.rs` — delete entirely
+- `src/eval_tests_gates.rs` — delete or rewrite for generic gates
+- `src/eval_tests_score.rs` — update for new composite scoring
+- `tests/cli.rs` — update scenario YAML to include `target:` and new gate types
+- `src/run/tests.rs` — update scenario YAML
+- `src/store_analysis.rs` tests — deleted with the file
+
+---
+
+## Dependency Check
+
+No new crate dependencies needed. Existing dependencies cover all requirements:
+- `serde` / `serde_json` / `serde_yaml` — config parsing, JSON assertion
+- `regex` — command pattern matching, `file_matches` gate
+- `wait-timeout` — script timeout enforcement
+- `shlex` — command parsing (if needed for script execution)
+- `chrono` — timestamps
+- `tempfile` (dev) — test fixtures
+
+---
+
+## Estimated Scope
+
+| Phase | Description | Size |
+|-------|-------------|------|
+| 1 | Remove snapshot & qipu code | Medium — many files touched, mostly deletion |
+| 2 | Target tool configuration | Small — add struct, wire through |
+| 3 | Generic gate system | Medium — new evaluation logic + tests |
+| 4 | Scripts system | Medium — new module, 3 hook types, integration |
+| 5 | Documentation updates | Medium — README, config example, AGENTS.md, example scenario, spec reconciliation |
+| 6 | Cleanup | Small — dead code, formatting, final tests |
+
+Phases 1–2 can be done together as a single pass. Phase 3 and Phase 4 are independent of each other and could be parallelized if desired, though Phase 4's script gate depends on Phase 3's gate enum. Phase 5 (docs) should be done after Phases 3–4 so the documentation reflects the final implementation.

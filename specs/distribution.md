@@ -140,4 +140,3 @@ This spec is considered implemented when:
 ## References
 
 - [beads INSTALLING.md](https://github.com/steveyegge/beads/blob/main/docs/INSTALLING.md) — inspiration for multi-method distribution
-- [qipu distribution spec](../qipu/specs/distribution.md) — basis for this spec

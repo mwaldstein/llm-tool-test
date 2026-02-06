@@ -1,8 +1,26 @@
 # LLM Tool Test
 
-Framework for evaluating LLM coding agents against structured test scenarios.
+A framework for verifying that CLI tools work correctly when driven by LLM coding agents. It launches real agents against your tool in isolated scenarios, captures full transcripts, and evaluates the results across multiple quality dimensions.
 
-**Formerly part of [qipu](https://github.com/mwaldstein/qipu), now a standalone general-purpose tool.**
+The transcript is a first-class artifact. When a scenario fails, the transcript shows you exactly where the agent went wrong — whether due to unclear docs, missing guidance, or tool behavior the LLM couldn't navigate.
+
+## Who is this for?
+
+**CLI tool authors** who want confidence that their tool works well when an LLM agent is the operator. Does the agent invoke the right subcommands? Does it recover from errors? Do your `--help` strings actually help?
+
+**Skills/guidance authors** (people writing AGENTS.md files, tool documentation, or system prompts) who want to test whether their documentation effectively guides LLMs through real workflows.
+
+## How it works
+
+1. You define **scenarios** — structured test cases with a prompt, expected outcomes, and evaluation gates.
+2. The framework launches a real LLM agent (opencode, claude-code) in an isolated environment with your tool available.
+3. The agent works through the prompt. The full interaction is captured as a **transcript**.
+4. Results are evaluated on three layers:
+   - **Interaction quality** — derived from the transcript (errors, retries, confusion)
+   - **Outcome assertions** — configurable gates that check concrete results (files created, commands succeed, expected output)
+   - **LLM-as-judge** — rubric-based evaluation of overall quality
+
+Each run produces an `evaluation.md` with pass/fail, metrics, and links to all artifacts.
 
 ## Safety
 
@@ -75,30 +93,36 @@ Each run generates an `evaluation.md` with:
 **Summary**: Scenario name, tool, model, outcome (Pass/Fail)
 
 **Metrics**:
-- Gates Passed: X/N - Test criteria satisfied
-- Notes Created: Count
-- Links Created: Count
+- Gates Passed: X/N — test criteria satisfied
 - Duration: Time taken
 - Cost: Estimated API cost
-- Composite Score: Overall performance (0.0-1.0)
+- Composite Score: Available when configured per scenario (0.0-1.0)
 
 **Human Review**: Manual scoring section (you fill in)
 
-**Links**: Transcript, metrics, events, store snapshot
+**Links**: Transcript, metrics, events
 
 ### Gate Types
 
-Tests pass when all gates succeed:
+Tests pass when all gates succeed. The gate system is being redesigned toward generic, domain-independent assertions. The current gates include:
+
+Generic (stable):
+- `command_succeeds`: Shell command exits successfully
+- `command_output_contains`: Command stdout contains expected substring
+- `command_output_matches`: Command stdout matches regex pattern
+- `file_exists`: File present at expected path
+- `file_contains`: File content contains expected substring
+- `no_transcript_errors`: No command errors in transcript
+
+Domain-specific (evolving — these will be generalized or replaced):
+- `content_contains`: File or output contains substring
 - `min_notes`: Minimum notes created
 - `min_links`: Minimum links created
 - `search_hit`: Query returns results
 - `note_exists`: Specific note ID exists
 - `link_exists`: Specific link exists
 - `tag_exists`: Tag found in store
-- `content_contains`: Note contains substring
-- `command_succeeds`: Shell command exits successfully
-- `doctor_passes`: Qipu health check passes
-- `no_transcript_errors`: No parsing errors
+- `doctor_passes`: Health check passes
 
 ## Typical Workflow
 
@@ -121,15 +145,25 @@ cat llm-tool-test-results/<timestamp>*/transcript.raw.txt
 
 ## Configuration
 
-Optional `llm-tool-test-config.toml` for cost tracking:
+Optional `llm-tool-test-config.toml` for tool/model configuration and cost tracking:
 
 ```toml
+[tools.opencode]
+name = "opencode"
+command = "opencode"
+models = ["gpt-4o", "claude-sonnet"]
+
+[profiles.quick]
+name = "quick"
+tools = ["opencode"]
+models = ["gpt-4o"]
+
 [models.gpt-4o]
 input_cost_per_1k_tokens = 2.5
 output_cost_per_1k_tokens = 10.0
 ```
 
-Copy `llm-tool-test-config.example.toml` as template.
+Copy `llm-tool-test-config.example.toml` as a starting point.
 
 ## Troubleshooting
 
@@ -157,7 +191,3 @@ All test artifacts stored in `llm-tool-test-results/<timestamp>-<tool>-<model>-<
 cargo build --release
 # Binary will be at target/release/llm-tool-test
 ```
-
-## About
-
-Split from the [qipu](https://github.com/mwaldstein/qipu) project to serve as a general-purpose testing framework for CLI tools with LLM agents.

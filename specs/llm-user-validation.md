@@ -1,325 +1,190 @@
-# LLM User Validation Testing
+# LLM User Validation
+
+**Status: Draft**
 
 ## Purpose
 
-Validate that a CLI tool achieves its core goal: being usable by an LLM as the primary user.
+llm-tool-test is a framework for validating that a CLI tool works well when used by LLM coding agents. This is **LLM User Validation** — testing the tool from the LLM's perspective rather than from a human user's perspective.
 
-This spec defines the **llm-tool-test** testing harness that invokes real LLM CLI tools, captures complete transcripts, and evaluates both structural outcomes and qualitative interaction quality.
+The framework serves two audiences:
 
-> **Note**: This specification was originally written for qipu but applies to any CLI tool designed for LLM use.
+1. **CLI tool authors**: "Can an LLM use my tool effectively given my documentation?" — validates that the tool's CLI design, help output, error messages, and documentation are sufficient for an LLM agent to accomplish real tasks.
 
-## Core Goal
+2. **Guidance authors**: "Does my AGENTS.md or documentation effectively guide LLMs?" — validates that project-level instructions, workflow descriptions, and tool usage patterns produce good outcomes when followed by an LLM agent.
 
-From the tool's README: "designed to be used by LLMs as their interface/system."
+Both audiences share the same core question: if you give an LLM agent your tool's documentation and a task, can it accomplish the task?
 
-This test confirms that goal by having actual LLMs attempt to use the tool given only its documentation.
+## Core Concept
+
+The quality of an LLM-tool interaction reveals:
+
+- Whether the tool's CLI design is LLM-friendly (flag names, subcommand structure, defaults)
+- Whether the documentation is clear and complete enough for an LLM to use without guessing
+- Whether error messages guide recovery (can the LLM self-correct after a mistake?)
+- Whether the tool's output is parseable and actionable (can the LLM extract IDs, status, and results?)
+
+llm-tool-test automates this evaluation. It launches a real LLM coding agent in an isolated workspace, gives it a task that requires using the target CLI tool, captures the full interaction transcript, and evaluates the result against defined criteria.
+
+The framework is tool-agnostic. It does not link against the target tool's code or assume anything about its internals. It treats the target tool as a black box — exactly as an LLM agent would.
 
 ---
 
 ## Architecture Overview
 
-The test harness is a **separate binary** (`llm-tool-test`) that tests qipu as a black box. This keeps test infrastructure out of the distributed qipu binary and allows the harness to be reused for testing other LLM-facing CLI tools.
-
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Scenarios     │────▶│  llm-tool-test  │────▶│  Tool Adapters  │
-│   (YAML)        │     │  (separate bin) │     │  amp, opencode  │
+│   Scenarios     │────▶│  llm-tool-test  │────▶│  LLM Agent      │
+│   (YAML)        │     │  (harness)      │     │  Adapters        │
 └─────────────────┘     └────────┬────────┘     └────────┬────────┘
                                  │                       │
-                                 ▼                       ▼
-                        ┌─────────────────┐     ┌─────────────────┐
-                        │   Evaluator     │◀────│  Transcript     │
-                        │  (gates+judge)  │     │  Capture        │
-                        └────────┬────────┘     └─────────────────┘
+                        ┌────────┴────────┐              │ launches
+                        │  Target Tool    │              ▼
+                        │  Configuration  │     ┌─────────────────┐
+                        └─────────────────┘     │  LLM Agent      │
+                                                │  (opencode,     │
+                                                │   claude-code)  │
+                                                └────────┬────────┘
+                                                         │ uses
+                                                         ▼
+                                                ┌─────────────────┐
+                                                │  Target CLI     │
+                        ┌─────────────────┐     │  Tool           │
+                        │  Transcript     │◀────└─────────────────┘
+                        │  Capture        │
+                        └────────┬────────┘
                                  │
                                  ▼
                         ┌─────────────────┐
-                        │  Results DB     │
-                        │  (JSONL/SQLite) │
+                        │  Evaluator      │
+                        │  (3-layer)      │
+                        └────────┬────────┘
+                                 │
+                                 ▼
+                        ┌─────────────────┐
+                        │  Results &      │
+                        │  Artifacts      │
                         └─────────────────┘
 ```
 
+### Key Components
+
+1. **Scenarios** — YAML files that define tasks and evaluation criteria. See [specs/scenarios.md](scenarios.md).
+2. **Target Tool Configuration** — declares what CLI tool is being tested, including its commands and how to inspect its state.
+3. **LLM Agent Adapters** — invoke LLM coding agents (opencode, claude-code) that then use the target tool.
+4. **Transcript Capture** — records the full agent interaction via PTY.
+5. **Evaluator** — three-layer quality measurement. See [specs/evaluation.md](evaluation.md).
+6. **Results & Artifacts** — structured output for analysis and review.
+
 ### Key Architectural Decisions
 
-1. **Separate binary**: `llm-tool-test` is NOT part of qipu. It lives in a separate crate within the workspace (or separate repo).
+1. **Separate binary**: `llm-tool-test` is a standalone tool, not a library or test harness linked into the target tool.
 
-2. **Black-box testing**: The harness treats qipu as an external CLI tool. It doesn't link against qipu's library code.
+2. **Black-box testing**: The harness treats the target as an external CLI tool. It doesn't link against the tool's library code.
 
-3. **Test fixtures**: Each scenario includes its own AGENTS.md, README, and any seed data the LLM needs to understand the tool.
+3. **Adapter indirection**: The harness invokes LLM agents, not the target tool. The LLM agent invokes the target tool. This mirrors real-world usage.
 
-4. **Reusability**: The harness design is tool-agnostic. While built for qipu, it could test other CLI tools with appropriate scenario definitions.
-
----
-
-## Test Environment Setup
-
-Each test run creates an isolated environment that mimics what a real LLM user would see.
-
-### Project Fixture Structure
-
-```
-tests/fixtures/qipu_basic/
-├── AGENTS.md              # Instructions for LLM (qipu commands, patterns)
-├── README.md              # Project context
-├── .qipu/                 # Pre-initialized store (optional)
-│   └── ...
-└── seed_notes/            # Notes to import before test (optional)
-    └── ...
-```
-
-### AGENTS.md for Tests
-
-The test AGENTS.md should contain:
-- Available qipu commands with examples
-- Common workflows
-- Output format guidance
-- Error handling patterns
-
-This is the primary "documentation" the LLM receives, so it must be representative of real usage.
-
-```markdown
-# AGENTS.md (test fixture)
-
-## Qipu - Knowledge Store
-
-### Quick Start
-qipu init                    # Initialize store
-qipu create "Title"          # Create a note
-qipu list                    # List all notes
-qipu show <id>               # Display a note
-
-### Creating Linked Notes
-qipu create "Concept A" --type permanent
-qipu create "Concept B" --type permanent  
-qipu link add <id-a> <id-b> --type related
-
-### Searching
-qipu search "query"          # Full-text search
-qipu context --query "topic" # Get context for a topic
-
-### Output Formats
-All commands support: --format human|json|records
-```
+4. **Tool-agnostic**: The harness can test any CLI tool with appropriate scenario definitions and target tool configuration.
 
 ---
 
-## Scenarios
+## LLM Agent Adapters
 
-Scenarios define test cases in declarative YAML format.
+Adapters handle the specifics of launching and communicating with each LLM coding agent. An important distinction: adapters invoke the **LLM coding agent** (opencode, claude-code), not the target CLI tool. The agent then uses the target tool autonomously.
 
-### Location
+### How Adapters Work
 
-```
-tests/llm_scenarios/
-├── capture_article.yaml
-├── link_navigation.yaml
-├── context_retrieval.yaml
-└── ...
-```
-
-### Schema
-
-```yaml
-id: capture_article_basic              # Unique identifier
-description: "Capture article ideas as linked notes"
-tags: [capture, links, retrieval]
-
-# Documentation provided to LLM
-docs:
-  prime: true                          # Include `qipu prime` output
-  help_commands:                       # Include --help for these commands
-    - create
-    - link
-    - list
-    - search
-    - show
-
-# Store setup
-setup:
-  store: fresh                         # fresh | seeded
-  seed_notes: []                       # Optional fixture notes
-  seed_from_pack: null                 # Optional: load from pack file
-
-# The task
-task:
-  prompt: |
-    Capture the key ideas from this article about distributed systems:
-    [article content or URL]
-    
-    Create structured notes with meaningful links between concepts.
-    When done, verify you can retrieve the main concepts via search.
-
-# Tool/model matrix (run scenario against multiple tools)
-tool_matrix:
-  - tool: amp
-    model: default
-  - tool: opencode
-    model: default
-
-# Execution constraints
-run:
-  timeout_secs: 600
-  max_turns: 40                        # If tool supports limiting
-
-# Evaluation criteria
-evaluation:
-  # Stage 1: Structural gates (cheap, deterministic)
-  gates:
-    min_notes: 3
-    min_links: 1
-    retrieval_queries:                 # Must return results
-      - "distributed"
-      - "systems"
-  
-  # Stage 2: LLM-as-judge (expensive, qualitative)
-  judge:
-    enabled: true
-    rubric: rubrics/capture_v1.yaml
-    pass_threshold: 0.70
-
-# Cost controls
-cost:
-  max_usd: 0.75                        # Per-run budget
-  cache: true                          # Cache identical runs
-```
-
-### Rubrics
-
-Rubrics define qualitative evaluation criteria for the LLM judge.
-
-```yaml
-# tests/llm_scenarios/rubrics/capture_v1.yaml
-criteria:
-  command_correctness:
-    weight: 0.25
-    description: "Uses valid qipu commands with correct syntax"
-  
-  structure_quality:
-    weight: 0.30
-    description: "Notes are well-organized with meaningful links"
-  
-  coverage:
-    weight: 0.30
-    description: "Captures key concepts without major omissions"
-  
-  retrieval_success:
-    weight: 0.15
-    description: "Can retrieve captured knowledge via search/show"
-
-output:
-  format: json
-  require_fields:
-    - scores          # Per-criterion scores (0.0-1.0)
-    - weighted_score  # Overall weighted score
-    - confidence      # Judge confidence (0.0-1.0)
-    - issues          # List of problems found
-    - highlights      # List of good practices observed
-```
-
----
-
-## Tool Adapters
-
-Tool adapters handle the specifics of invoking each LLM CLI tool.
+1. The harness prepares an isolated workspace with the scenario's fixture files (AGENTS.md, README, seed data).
+2. The adapter launches the LLM agent in that workspace with a task prompt.
+3. The agent reads the documentation, uses the target CLI tool to accomplish the task, and exits.
+4. The adapter captures the full interaction transcript and extracts cost/token metadata.
 
 ### Trait Definition
 
 ```rust
 pub trait ToolAdapter: Send + Sync {
-    /// Tool identifier
-    fn name(&self) -> &str;
-    
-    /// Check if tool is installed and authenticated
+    /// Check if tool is installed and authenticated.
     fn is_available(&self) -> Result<ToolStatus, AdapterError>;
-    
-    /// Execute a task and capture transcript
-    fn execute_task(
+
+    /// Check if the tool is available and ready to use.
+    fn check_availability(&self) -> anyhow::Result<()>;
+
+    /// Run the tool with the given scenario in the specified working directory.
+    /// Returns (output, exit_code, cost_usd, token_usage).
+    fn run(
         &self,
-        context: &TaskContext,
-        work_dir: &Path,
-        transcript_dir: &Path,
-    ) -> Result<ExecutionResult, AdapterError>;
-    
-    /// Estimate cost for a prompt (if possible)
-    fn estimate_cost(&self, prompt_tokens: usize) -> Option<CostEstimate>;
-}
-
-pub struct TaskContext {
-    pub system_prompt: String,    // qipu prime + help output
-    pub task_prompt: String,      // The actual task
-    pub timeout: Duration,
-}
-
-pub struct ExecutionResult {
-    pub exit_code: i32,
-    pub duration: Duration,
-    pub token_usage: Option<TokenUsage>,
-    pub cost_estimate: Option<f64>,
+        scenario: &Scenario,
+        cwd: &Path,
+        model: Option<&str>,
+        timeout_secs: u64,
+    ) -> anyhow::Result<(String, i32, Option<f64>, Option<TokenUsage>)>;
 }
 
 pub struct ToolStatus {
     pub available: bool,
-    pub version: Option<String>,
     pub authenticated: bool,
-    pub budget_remaining: Option<f64>,
+}
+
+pub struct TokenUsage {
+    pub input: usize,
+    pub output: usize,
 }
 ```
 
-### Supported Tools
+### Adapter Responsibilities
 
-| Tool | Invocation | Transcript Capture |
-|------|------------|-------------------|
-| amp | `amp --prompt-file <file>` | PTY capture |
-| opencode | `opencode <prompt>` | PTY capture |
-| claude | `claude --prompt <text>` | PTY capture |
+- **Execution**: Launch the agent process with appropriate flags and prompt.
+- **Transcript capture**: Capture full PTY output from the agent session.
+- **Structured event emission**: When possible, adapters should emit structured events (`tool_call`, `tool_result` with exit codes) to `events.jsonl`. This feeds Layer 1 interaction metrics directly. Raw transcript parsing is the fallback when structured events are unavailable.
+- **Cost/token tracking**: Parse actual cost and token usage from agent output when available. Do not estimate from character counts.
+- **Timeout enforcement**: Kill the agent process if it exceeds the configured timeout.
 
-### Token Usage and Cost Collection
+### Available Adapters
 
-Token counts and costs should be obtained from actual LLM tool responses when available:
-
-- Tools (amp, opencode, claude) may report actual API token usage and/or cost in their output
-- Adapters parse token counts and/or cost from tool output when available
-- If token counts are not available in tool output, return `None` for `token_usage`
-- If actual cost is available in tool output, use it instead of estimating from tokens
-- Do not use `len() / 4` or other character-based approximations for token counts
-- Do not estimate cost from character counts
-
-### PTY Session Capture
-
-Use pseudo-terminal capture to get complete interaction including:
-- ANSI colors and formatting
-- Interactive prompts
-- Real-time streaming output
-- Tool invocations and results
-
-Fallback to piped stdout/stderr if PTY unavailable.
+| Adapter | Agent Invocation | Status |
+|---------|-----------------|--------|
+| opencode | `opencode <prompt>` | Primary |
+| claude-code | `claude --prompt <text>` | Primary |
 
 ---
 
-## Transcript Artifacts
+## Transcript Capture
 
-Each run produces a bundle of artifacts for review and analysis.
+Transcripts are the primary artifact of a test run. For CLI tool authors, they reveal how the LLM interprets documentation and error messages. For guidance authors, they show exactly how the LLM follows (or deviates from) instructions.
 
-### Directory Structure
+### PTY-Based Capture
 
-```
-tests/transcripts/<scenario_id>/<tool>/<timestamp>/
-├── transcript.raw.txt      # Complete PTY output
-├── events.jsonl            # Structured event log
-├── run.json                # Run metadata
-├── store_snapshot/         # Copy of .qipu/ after run
-│   └── export.json         # qipu dump --format json
-└── report.md               # Human-readable summary
-```
+The harness uses pseudo-terminal capture to get the complete interaction including:
+
+- ANSI colors and formatting
+- Interactive prompts and responses
+- Real-time streaming output
+- Tool invocations and results
+
+Fallback to piped stdout/stderr if PTY is unavailable.
 
 ### Event Log Format
 
+Structured events extracted from the raw transcript:
+
 ```jsonl
-{"ts": 1705500000.123, "event": "spawn", "command": "amp", "args": ["--prompt-file", "/tmp/prompt.txt"]}
-{"ts": 1705500001.456, "event": "output", "text": "I'll create some notes...\n"}
-{"ts": 1705500005.789, "event": "tool_call", "tool": "bash", "command": "qipu create \"Main Concept\""}
-{"ts": 1705500006.012, "event": "tool_result", "output": "qp-abc123\n", "exit_code": 0}
+{"ts": 1705500000.123, "event": "spawn", "command": "opencode", "args": ["--prompt", "..."]}
+{"ts": 1705500001.456, "event": "output", "text": "I'll work on this task...\n"}
+{"ts": 1705500005.789, "event": "tool_call", "tool": "bash", "command": "my-tool create \"Main Concept\""}
+{"ts": 1705500006.012, "event": "tool_result", "output": "Created item abc123\n", "exit_code": 0}
 {"ts": 1705500030.000, "event": "complete", "exit_code": 0, "duration_secs": 30.0}
+```
+
+### Artifact Structure
+
+Each run produces:
+
+```
+llm-tool-test-results/<timestamp>-<tool>-<model>-<scenario>/
+├── transcript.raw.txt      # Complete PTY output
+├── events.jsonl            # Structured event log
+├── metrics.json            # Run metadata and measurements
+├── evaluation.md           # Human-readable summary
+└── fixture/                # Working directory, preserved after run
 ```
 
 ### Run Metadata
@@ -328,10 +193,9 @@ tests/transcripts/<scenario_id>/<tool>/<timestamp>/
 {
   "scenario_id": "capture_article_basic",
   "scenario_hash": "abc123def456",
-  "tool": "amp",
-  "model": "claude-3-5-sonnet",
-  "qipu_version": "0.1.0",
-  "qipu_commit": "abc123",
+  "tool": "opencode",
+  "model": "claude-sonnet-4-20250514",
+  "target_tool_version": "0.1.0",
   "timestamp": "2025-01-17T12:00:00Z",
   "duration_secs": 45.3,
   "cost_estimate_usd": 0.023,
@@ -344,95 +208,154 @@ tests/transcripts/<scenario_id>/<tool>/<timestamp>/
 
 ---
 
-## Evaluation
+## Execution Flow
 
-### Two-Stage Evaluation
+A single scenario run proceeds through these steps:
 
-**Stage 1: Structural Gates (cheap, deterministic)**
+### 1. Load Scenario
 
-Run locally without LLM calls:
-- Note count meets minimum
-- Link count meets minimum
-- Retrieval queries return results
-- Store passes `qipu doctor`
-- No command errors in transcript
+Parse the YAML scenario file. Resolve the target tool configuration. Validate that all referenced fixtures, rubrics, and commands exist.
 
-Gates produce binary pass/fail plus metrics.
+### 2. Prepare Isolated Workspace
 
-**Stage 2: LLM-as-Judge (optional, qualitative)**
+Copy the scenario's fixture template into a `fixture/` directory inside the results directory. This includes AGENTS.md, README, seed data, and any pre-initialized tool state. The harness creates a fresh copy for each run. Because the fixture lives inside the results directory, any files the agent creates or modifies are automatically preserved as post-run artifacts.
 
-If enabled and gates pass:
-- Prepare judge prompt with transcript summary + store export + rubric
-- Call a low-cost judge model (e.g., gpt-4o-mini, claude-haiku)
-- Parse structured JSON response
-- Compute weighted score from rubric criteria
+### 3. Run Setup Commands
 
-### Evaluation Result
+Execute any `setup` commands defined in the scenario (e.g., initializing the target tool, importing seed data). These run before the LLM agent is launched.
 
-```rust
-pub struct EvaluationResult {
-    // Stage 1
-    pub gates_passed: bool,
-    pub metrics: EvaluationMetrics,
-    
-    // Stage 2 (optional)
-    pub judge_score: Option<f64>,
-    pub judge_confidence: Option<f64>,
-    pub judge_feedback: Option<JudgeFeedback>,
-    
-    // Final determination
-    pub outcome: Outcome,  // Pass | Fail | ReviewRequired
-}
+### 4. Launch LLM Agent via Adapter
 
-pub struct EvaluationMetrics {
-    pub note_count: usize,
-    pub link_count: usize,
-    pub retrieval_hits: usize,
-    pub retrieval_misses: usize,
-    pub command_errors: usize,
-    pub doctor_passed: bool,
-}
+The adapter launches the LLM coding agent (opencode, claude-code) in the prepared workspace with the scenario's task prompt. The agent autonomously reads documentation and uses the target CLI tool to accomplish the task.
 
-pub enum Outcome {
-    Pass,
-    Fail { reason: String },
-    ReviewRequired { reason: String },
-}
+### 5. Capture Transcript
+
+The full PTY output is captured during the agent session. After the agent exits (or is killed by timeout), the raw transcript is written to disk and structured events are extracted.
+
+### 6. Post-Execution Scripts
+
+Run any post-execution scripts defined in `scripts.post`. These handle tool-specific state capture, data export, or normalization — anything that needs to happen after the agent finishes but before evaluation. Failures are logged as warnings but do not block evaluation.
+
+See [specs/scripts.md](scripts.md) for details.
+
+### 7. Evaluate
+
+The evaluator runs:
+- **Interaction quality metrics**: command error rate, self-correction, tool usage patterns (always runs)
+- **Gates**: built-in gates and script gates, all run regardless of earlier failures
+- **Custom evaluators**: scripts that produce additional metrics/scores (see [specs/scripts.md](scripts.md))
+- **LLM-as-judge**: qualitative assessment against a rubric (optional, if enabled and gates pass)
+
+See [specs/evaluation.md](evaluation.md) for details.
+
+### 8. Generate Artifacts
+
+Write the transcript, event log, metrics, and evaluation summary to the results directory. The fixture (working directory) is already in the results directory and is preserved as-is.
+
+---
+
+## Cost Management
+
+LLM API calls are expensive. The harness enforces cost controls at multiple levels.
+
+### Budget Enforcement
+
+1. **Per-run limit**: From the scenario's `cost.max_usd` field.
+2. **Session limit**: From `--max-usd` flag or `LLM_TOOL_TEST_BUDGET_USD` environment variable.
+3. **Estimate before run**: Warn if estimated cost exceeds the limit.
+4. **Track actual cost**: Log actual cost (from adapter output) to results for trend analysis.
+
+### Caching
+
+Cache key components:
+- Scenario YAML hash
+- Prompt content hash
+- Target tool version
+- Agent tool + model identifier
+
+If cache hit, reuse transcript and evaluation results. Disable with `--no-cache`.
+
+### Dry Run Mode
+
+`--dry-run` shows:
+- Scenarios that would run
+- Estimated prompt sizes
+- Estimated costs
+- Cache status (hit/miss)
+
+No LLM API calls are made.
+
+### Environment Variables
+
+```bash
+LLM_TOOL_TEST_ENABLED=1          # Must be set to run tests (safety)
+LLM_TOOL_TEST_BUDGET_USD=5.00    # Session budget limit
+LLM_TOOL_TEST_TOOL=opencode      # Default LLM agent tool
+LLM_TOOL_TEST_JUDGE=gpt-4o-mini  # Judge model for LLM-as-judge evaluation
+```
+
+---
+
+## Security
+
+### Transcript Redaction
+
+Before writing the human-readable evaluation summary, redact:
+- API keys and tokens
+- Passwords and secrets
+- Email addresses (optional)
+- File paths containing usernames
+
+The raw transcript is preserved but marked as sensitive. It should not be committed to version control.
+
+### Gitignore
+
+```gitignore
+# LLM test artifacts (volatile, potentially sensitive)
+llm-tool-test-results/
+```
+
+---
+
+## CLI Interface
+
+### Commands
+
+```bash
+# Run scenarios
+llm-tool-test run --scenario capture_basic  # Run specific scenario
+llm-tool-test run --all                     # Run all scenarios
+llm-tool-test run --all --tags capture      # Run by tags
+llm-tool-test run --all --tier 1            # Run by tier
+llm-tool-test run --tool opencode           # Run with specific agent
+llm-tool-test run --max-usd 1.00            # Budget limit
+llm-tool-test run --dry-run                 # Show what would run + cost estimate
+
+# Matrix runs
+llm-tool-test run --all --tools opencode,claude-code --models gpt-4o,claude-sonnet
+
+# List and inspect scenarios
+llm-tool-test scenarios                     # List all scenarios
+llm-tool-test scenarios --tags capture      # Filter by tags
+llm-tool-test show <scenario-id>            # Show scenario details
+
+# Maintenance
+llm-tool-test clean --older-than 7d         # Clean old artifacts
+llm-tool-test clean                         # Clean all artifacts
 ```
 
 ---
 
 ## Results Tracking
 
-### Results Database
+### Storage
 
-Store results in append-only format for trend analysis:
+Results are stored in an append-only format for trend analysis:
 
 ```
-tests/llm_results/
+llm-tool-test-results/
 ├── results.jsonl           # Append-only run results
 └── results.db              # Optional SQLite for queries
-```
-
-### Result Record
-
-```json
-{
-  "id": "run-2025-01-17-001",
-  "scenario_id": "capture_article_basic",
-  "scenario_hash": "abc123",
-  "tool": "amp",
-  "model": "claude-3-5-sonnet",
-  "qipu_commit": "def456",
-  "timestamp": "2025-01-17T12:00:00Z",
-  "duration_secs": 45.3,
-  "cost_usd": 0.023,
-  "gates_passed": true,
-  "metrics": { ... },
-  "judge_score": 0.82,
-  "outcome": "Pass",
-  "transcript_path": "tests/transcripts/capture_article_basic/amp/1705500000"
-}
 ```
 
 ### Regression Detection
@@ -444,99 +367,18 @@ Compare against baseline runs:
 
 ---
 
-## CLI Interface
-
-The harness is invoked via `llm-tool-test`, a separate binary.
-
-### Commands
-
-```bash
-# Run scenarios
-llm-tool-test run                           # Run all scenarios
-llm-tool-test run --scenario capture_basic  # Run specific scenario
-llm-tool-test run --tags capture,links      # Run by tags
-llm-tool-test run --tool amp                # Run with specific tool
-llm-tool-test run --max-usd 1.00            # Budget limit
-
-# Dry run (no LLM calls)
-llm-tool-test run --dry-run                 # Show what would run + cost estimate
-
-# Results
-llm-tool-test list                          # List recent runs
-llm-tool-test show <run-id>                 # Show run details
-llm-tool-test compare <run-id> <run-id>     # Compare two runs
-llm-tool-test report                        # Generate summary report
-
-# Maintenance
-llm-tool-test clean --older-than 30d        # Clean old transcripts
-```
-
-### Environment Variables
-
-```bash
-LLM_TOOL_TEST_ENABLED=1       # Must be set to run tests (safety)
-LLM_TOOL_TEST_BUDGET_USD=5.00 # Session budget limit
-LLM_TOOL_TEST_TOOL=amp        # Default LLM tool
-LLM_TOOL_TEST_JUDGE=gpt-4o-mini  # Judge model
-```
-
----
-
-## Cost Management
-
-### Budget Enforcement
-
-1. **Per-run limit**: From scenario `cost.max_usd`
-2. **Session limit**: From `--max-usd` or `QIPU_LLM_BUDGET_USD`
-3. **Estimate before run**: Warn if estimated cost exceeds limit
-4. **Track actual cost**: Log to results for trend analysis
-
-### Caching
-
-Cache key components:
-- Scenario YAML hash
-- Prompt file hash
-- qipu prime output hash
-- Tool + model identifier
-- qipu version/commit
-
-If cache hit, reuse transcript and evaluation results.
-
-### Dry Run Mode
-
-`--dry-run` shows:
-- Scenarios that would run
-- Estimated prompt sizes
-- Estimated costs
-- Cache status (hit/miss)
-
----
-
-## Security
-
-### Transcript Redaction
-
-Before writing `report.md`, redact:
-- API keys and tokens
-- Passwords and secrets
-- Email addresses (optional)
-- File paths with usernames
-
-Raw transcript preserved but marked sensitive.
-
-### Gitignore
-
-```gitignore
-# LLM test artifacts (volatile, potentially sensitive)
-tests/transcripts/
-tests/llm_results/
-```
-
----
-
 ## Not In Scope
 
-- CI integration (too expensive, run manually)
+- CI integration (too expensive for automated runs)
 - Multi-model statistical benchmarking (future)
 - Real-time cost tracking via provider APIs
 - Interactive test authoring UI
+
+---
+
+## Cross-References
+
+- Scenario format and target tool configuration: see [specs/scenarios.md](scenarios.md)
+- Quality measurement and evaluation: see [specs/evaluation.md](evaluation.md)
+- Scripts and extension hooks: see [specs/scripts.md](scripts.md)
+- Distribution and installation: see [specs/distribution.md](distribution.md)
