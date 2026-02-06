@@ -501,15 +501,17 @@ The specs use a hypothetical `taskmgr` tool. Create a concrete, runnable example
 
 ### 5.7 Update specs if implementation deviates
 
-Review each spec against the actual implementation and update any details that changed during development (field names, default values, behavior on edge cases).
+**Status:** ✅ Complete
 
-**Files:**
-- `specs/evaluation.md` — Verify gate types match implementation.
-- `specs/scenarios.md` — Verify schema matches implementation.
-- `specs/scripts.md` — Verify contracts match implementation.
-- `specs/llm-user-validation.md` — Verify architecture description matches implementation.
+Reviewed each spec against the actual implementation. No deviations found requiring updates.
 
-**Verify:** Read each spec and compare against the code. No stale references, no contradictions.
+**Files reviewed:**
+- ✅ `specs/evaluation.md` — All 9 gate types match implementation (`command_succeeds`, `command_output_contains`, `command_output_matches`, `command_json_path`, `file_exists`, `file_contains`, `file_matches`, `no_transcript_errors`, `script`). JSON path assertions (`exists`, `equals`, `contains`, `len >=/==/> N`) match implementation. Composite scoring and interaction metrics align with code.
+- ✅ `specs/scenarios.md` — Schema matches implementation: `target` config with `binary`, `command_pattern`, `health_check`, `env`; `scripts.post` and `scripts.evaluators` with timeouts; all scenario fields align with `src/scenario/types.rs`.
+- ✅ `specs/scripts.md` — Script contracts match implementation: environment variables (`LLM_TOOL_TEST_*`), JSON output format for script gates (`{passed, message}`), evaluator output format (`{metrics, score, summary}`), timeout defaults (30s post, 60s evaluators), exit code behavior all match `src/script_runner.rs` and `src/evaluation.rs`.
+- ✅ `specs/llm-user-validation.md` — Architecture description matches implementation: three-layer evaluation, adapter pattern, transcript capture, script hooks all align with actual code structure.
+
+**Verify:** ✅ All specs match implementation. No stale references, no contradictions. All 182 tests pass.
 
 ---
 
