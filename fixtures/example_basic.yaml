@@ -1,0 +1,57 @@
+# Example Basic Scenario
+# This demonstrates the complete scripts system with a mock task management tool
+
+name: example_basic
+description: Demonstrates the scripts system with a mock taskmgr tool
+
+target:
+  binary: taskmgr
+  command_pattern: "taskmgr\\s+(\\S+)"
+  health_check: "./taskmgr help"
+  env:
+    TASK_FILE: tasks.txt
+
+task: |
+  Use the taskmgr tool to create a task named "Implement scripts system".
+  
+  The taskmgr tool is available in the current directory. Run:
+  ./taskmgr create "Implement scripts system"
+
+setup:
+  commands:
+    - chmod +x taskmgr
+    - chmod +x scripts/*.sh
+
+gates:
+  - type: file_exists
+    path: tasks.txt
+    description: Task file should exist after agent runs
+
+  - type: file_contains
+    path: tasks.txt
+    substring: "Implement scripts system"
+    description: Task file should contain the task name
+
+  - type: command_succeeds
+    command: "grep -q 'CREATED:' tasks.txt"
+    description: Task file should have the expected format
+
+  - type: script
+    command: "./scripts/check_task_quality.sh"
+    description: Script gate validates task quality
+
+scripts:
+  post:
+    - command: "./scripts/validate_task.sh"
+      timeout_secs: 30
+  
+  evaluators:
+    - command: "./scripts/assess_completion.sh"
+      name: task_quality
+      timeout_secs: 30
+
+evaluation:
+  composite:
+    judge_weight: 0.4
+    gate_weight: 0.4
+    interaction_weight: 0.2

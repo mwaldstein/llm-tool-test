@@ -1,0 +1,49 @@
+#!/bin/bash
+# taskmgr - Mock task management CLI tool
+# This simulates a simple CLI tool for demonstration purposes
+
+set -e
+
+TASK_FILE="${TASK_FILE:-tasks.txt}"
+
+if [ $# -lt 1 ]; then
+    echo "Usage: taskmgr <command> [args...]"
+    echo "Commands:"
+    echo "  create <task-name>  - Create a new task"
+    echo "  list               - List all tasks"
+    echo "  help               - Show this help"
+    exit 1
+fi
+
+COMMAND="$1"
+shift
+
+case "$COMMAND" in
+    create)
+        if [ $# -lt 1 ]; then
+            echo "Error: task-name required"
+            exit 1
+        fi
+        TASK_NAME="$1"
+        echo "[$(date -Iseconds)] CREATED: $TASK_NAME" >> "$TASK_FILE"
+        echo "Created task: $TASK_NAME"
+        ;;
+    list)
+        if [ -f "$TASK_FILE" ]; then
+            cat "$TASK_FILE"
+        else
+            echo "No tasks found"
+        fi
+        ;;
+    help|--help|-h)
+        echo "Usage: taskmgr <command> [args...]"
+        echo "Commands:"
+        echo "  create <task-name>  - Create a new task"
+        echo "  list               - List all tasks"
+        echo "  help               - Show this help"
+        ;;
+    *)
+        echo "Unknown command: $COMMAND"
+        exit 1
+        ;;
+esac

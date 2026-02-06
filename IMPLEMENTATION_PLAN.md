@@ -480,11 +480,24 @@ The TODO still contains pre-split tasks, qipu repo tasks (now removed), and item
 
 ### 5.6 Create an example scenario with scripts
 
+**Status:** ✅ Complete
+
 The specs use a hypothetical `taskmgr` tool. Create a concrete, runnable example scenario that demonstrates the scripts feature using a simple real tool (e.g., `git` or a shell script that acts as a mock CLI). This serves as both documentation and a smoke test.
 
 **Files:**
-- `fixtures/example_basic/` — New directory with AGENTS.md, README.md, and scripts/.
-- `fixtures/example_basic.yaml` — Scenario YAML using target config, generic gates, and scripts.
+- ✅ `fixtures/example_basic/` — New directory with AGENTS.md, README.md, and scripts/.
+  - `AGENTS.md` - Documents the fixture structure and mock tool
+  - `README.md` - Explains the scenario purpose and how to run it
+  - `taskmgr` - Mock CLI tool (shell script) that simulates a task manager
+  - `scripts/validate_task.sh` - Post script to validate task creation
+  - `scripts/check_task_quality.sh` - Script gate to check task quality
+  - `scripts/assess_completion.sh` - Custom evaluator to assess task completion
+- ✅ `fixtures/example_basic.yaml` — Scenario YAML using target config, generic gates, and scripts.
+  - Target tool configuration with `taskmgr` binary
+  - Generic gates: file_exists, file_contains, command_succeeds, script
+  - Post script and custom evaluator configuration
+
+**Verify:** ✅ `cargo build` — no compile errors. ✅ `cargo test` — all 182 tests pass.
 
 ### 5.7 Update specs if implementation deviates
 
