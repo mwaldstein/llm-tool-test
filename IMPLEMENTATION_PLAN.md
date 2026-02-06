@@ -418,10 +418,12 @@ Total test count: 182 (164 unit + 18 integration)
 
 ### 5.1 Update README.md gate types
 
+**Status:** ✅ Complete
+
 The README currently lists domain-specific gates under "Domain-specific (evolving)". After Phase 3, remove that section entirely and list only the implemented generic gates. Update any example commands or scenario references.
 
 **Files:**
-- `README.md` — Replace the gate types section with the final implemented set. Remove the "evolving" caveat.
+- ✅ `README.md` — Updated gate types section to list all 9 implemented generic gates: `command_succeeds`, `command_output_contains`, `command_output_matches`, `command_json_path`, `file_exists`, `file_contains`, `file_matches`, `no_transcript_errors`, `script`. Removed the "Domain-specific" section and "evolving" caveat.
 
 ### 5.2 Update llm-tool-test-config.example.toml
 

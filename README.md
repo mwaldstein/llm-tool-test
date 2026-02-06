@@ -104,25 +104,17 @@ Each run generates an `evaluation.md` with:
 
 ### Gate Types
 
-Tests pass when all gates succeed. The gate system is being redesigned toward generic, domain-independent assertions. The current gates include:
+Tests pass when all gates succeed. Gates are domain-independent assertions that verify outcomes after the LLM tool completes the task:
 
-Generic (stable):
-- `command_succeeds`: Shell command exits successfully
+- `command_succeeds`: Shell command exits successfully (exit code 0)
 - `command_output_contains`: Command stdout contains expected substring
 - `command_output_matches`: Command stdout matches regex pattern
-- `file_exists`: File present at expected path
+- `command_json_path`: JSON output contains data matching a path assertion (e.g., `$.items[0].status exists`, `$.count > 5`)
+- `file_exists`: File present at expected path in fixture directory
 - `file_contains`: File content contains expected substring
-- `no_transcript_errors`: No command errors in transcript
-
-Domain-specific (evolving — these will be generalized or replaced):
-- `content_contains`: File or output contains substring
-- `min_notes`: Minimum notes created
-- `min_links`: Minimum links created
-- `search_hit`: Query returns results
-- `note_exists`: Specific note ID exists
-- `link_exists`: Specific link exists
-- `tag_exists`: Tag found in store
-- `doctor_passes`: Health check passes
+- `file_matches`: File content matches regex pattern
+- `no_transcript_errors`: No command errors detected in transcript
+- `script`: Custom script gate that can return pass/fail via exit code or JSON output (`{"passed": true, "message": "..."}`)
 
 ## Typical Workflow
 
