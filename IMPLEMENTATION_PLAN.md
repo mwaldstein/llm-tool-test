@@ -47,15 +47,19 @@ The `store_analysis.rs` module and `QualityMetrics` are qipu-specific (they pars
 
 ### 1.3 Remove qipu-specific eval helpers
 
+**Status:** ✅ Complete
+
 **Files:**
-- `src/eval_helpers.rs` — Delete `get_qipu_path()`, `run_qipu_json()`, and `create_note_with_stdin()`. These are qipu-specific. The functions they support (`count_notes`, `count_links`, `search_hit`, `note_exists`, `link_exists`, `tag_exists`, `content_contains`, `command_succeeds`, `doctor_passes`) all depend on `run_qipu_json()` or `get_qipu_path()`, so they need to be removed or stubbed.
-- `src/evaluation.rs` — The current gate evaluator calls these functions. Since we're replacing gates in Phase 3, for now stub the domain-specific gate evaluators to return a "not implemented" failure, or remove them if Phase 3 is done immediately after.
-- `src/eval_tests_doctor.rs` — Delete this file (qipu doctor tests).
-- `src/eval_tests_gates.rs` — Review; delete or stub tests that depend on qipu binary.
+- ✅ `src/eval_helpers.rs` — Deleted all qipu-specific functions: `get_qipu_path()`, `run_qipu_json()`, `create_note_with_stdin()`, `count_notes()`, `count_links()`, `search_hit()`, `note_exists()`, `link_exists()`, `tag_exists()`, `content_contains()`, `command_succeeds()`, `doctor_passes()`. Kept only generic functions: `no_transcript_errors()`, `compute_efficiency_metrics()`, and `compute_composite_score()`.
+- ✅ `src/evaluation.rs` — Stubbed qipu-specific gate evaluators (`MinNotes`, `MinLinks`, `SearchHit`, `NoteExists`, `LinkExists`, `TagExists`, `ContentContains`, `DoctorPasses`) to return "not implemented" failures. Implemented `CommandSucceeds` as a generic gate that runs arbitrary shell commands. Removed store snapshot reference from judge evaluation prompt.
+- ✅ `src/eval_tests_doctor.rs` — Deleted this file (qipu doctor tests).
+- ✅ `src/eval_tests_gates.rs` — Deleted this file (qipu-specific gate tests).
+- ✅ `src/main.rs` — Removed module declarations for `eval_tests_doctor` and `eval_tests_gates`.
+- ✅ `src/adapter/mock.rs` — Updated to be tool-agnostic. Removed all qipu command execution. Now just returns a simple mock transcript without executing any commands.
+- ✅ `src/adapter/mock_test.rs` — Updated tests to be generic and not depend on qipu.
+- ✅ `src/run/transcript.rs` — Fixed unused variable warnings by prefixing with underscore.
 
-**Decision point:** If Phase 3 (new gates) is done immediately after Phase 1, it's cleaner to delete the old gate implementations here and implement new ones in Phase 3. If there's a gap, stub them.
-
-**Verify:** `cargo build`, `cargo test`.
+**Verify:** `cargo build` ✅, `cargo test` ✅ (132 tests pass)
 
 ### 1.4 Remove qipu references from run metadata and cache
 

@@ -53,94 +53,123 @@ impl GateEvaluator for Gate {
     }
 }
 
-fn eval_min_notes(count: usize, env_root: &Path) -> GateResult {
-    eval_gate!(
-        "MinNotes",
-        crate::eval_helpers::count_notes(env_root).context("Failed to count notes"),
-        |note_count| (
-            note_count >= count,
-            format!("Expected >= {}, found {}", count, note_count)
-        )
-    )
+fn eval_min_notes(count: usize, _env_root: &Path) -> GateResult {
+    GateResult {
+        gate_type: "MinNotes".to_string(),
+        passed: false,
+        message: format!(
+            "MinNotes gate not implemented (requires qipu). Expected >= {} notes.",
+            count
+        ),
+    }
 }
 
-fn eval_min_links(count: usize, env_root: &Path) -> GateResult {
-    eval_gate!(
-        "MinLinks",
-        crate::eval_helpers::count_links(env_root).context("Failed to count links"),
-        |link_count| (
-            link_count >= count,
-            format!("Expected >= {}, found {}", count, link_count)
-        )
-    )
+fn eval_min_links(count: usize, _env_root: &Path) -> GateResult {
+    GateResult {
+        gate_type: "MinLinks".to_string(),
+        passed: false,
+        message: format!(
+            "MinLinks gate not implemented (requires qipu). Expected >= {} links.",
+            count
+        ),
+    }
 }
 
-fn eval_search_hit(query: &str, env_root: &Path) -> GateResult {
-    eval_gate!(
-        "SearchHit",
-        crate::eval_helpers::search_hit(query, env_root),
-        |hit| (hit, format!("Query '{}' found: {}", query, hit))
-    )
+fn eval_search_hit(query: &str, _env_root: &Path) -> GateResult {
+    GateResult {
+        gate_type: "SearchHit".to_string(),
+        passed: false,
+        message: format!(
+            "SearchHit gate not implemented (requires qipu). Query: '{}'.",
+            query
+        ),
+    }
 }
 
-fn eval_note_exists(id: &str, env_root: &Path) -> GateResult {
-    eval_gate!(
-        "NoteExists",
-        crate::eval_helpers::note_exists(id, env_root),
-        |exists| (exists, format!("Note '{}' exists: {}", id, exists))
-    )
+fn eval_note_exists(id: &str, _env_root: &Path) -> GateResult {
+    GateResult {
+        gate_type: "NoteExists".to_string(),
+        passed: false,
+        message: format!(
+            "NoteExists gate not implemented (requires qipu). Note ID: '{}'.",
+            id
+        ),
+    }
 }
 
-fn eval_link_exists(from: &str, to: &str, link_type: &str, env_root: &Path) -> GateResult {
-    eval_gate!(
-        "LinkExists",
-        crate::eval_helpers::link_exists(from, to, link_type, env_root),
-        |exists| (
-            exists,
-            format!(
-                "Link {} --[{}]--> {} exists: {}",
-                from, link_type, to, exists
-            )
-        )
-    )
+fn eval_link_exists(from: &str, to: &str, link_type: &str, _env_root: &Path) -> GateResult {
+    GateResult {
+        gate_type: "LinkExists".to_string(),
+        passed: false,
+        message: format!(
+            "LinkExists gate not implemented (requires qipu). Link: {} --[{}]--> {}.",
+            from, link_type, to
+        ),
+    }
 }
 
-fn eval_tag_exists(tag: &str, env_root: &Path) -> GateResult {
-    eval_gate!(
-        "TagExists",
-        crate::eval_helpers::tag_exists(tag, env_root),
-        |exists| (exists, format!("Tag '{}' exists: {}", tag, exists))
-    )
+fn eval_tag_exists(tag: &str, _env_root: &Path) -> GateResult {
+    GateResult {
+        gate_type: "TagExists".to_string(),
+        passed: false,
+        message: format!(
+            "TagExists gate not implemented (requires qipu). Tag: '{}'.",
+            tag
+        ),
+    }
 }
 
-fn eval_content_contains(id: &str, substring: &str, env_root: &Path) -> GateResult {
-    eval_gate!(
-        "ContentContains",
-        crate::eval_helpers::content_contains(id, substring, env_root),
-        |contains| (
-            contains,
-            format!("Note '{}' contains '{}': {}", id, substring, contains)
-        )
-    )
+fn eval_content_contains(id: &str, substring: &str, _env_root: &Path) -> GateResult {
+    GateResult {
+        gate_type: "ContentContains".to_string(),
+        passed: false,
+        message: format!(
+            "ContentContains gate not implemented (requires qipu). Note: '{}', substring: '{}'.",
+            id, substring
+        ),
+    }
 }
 
 fn eval_command_succeeds(command: &str, env_root: &Path) -> GateResult {
-    eval_gate!(
-        "CommandSucceeds",
-        crate::eval_helpers::command_succeeds(command, env_root),
-        |succeeds| (
-            succeeds,
-            format!("Command '{}' succeeded: {}", command, succeeds)
-        )
-    )
+    use std::process::Command;
+
+    let parts: Vec<&str> = command.split_whitespace().collect();
+    if parts.is_empty() {
+        return GateResult {
+            gate_type: "CommandSucceeds".to_string(),
+            passed: false,
+            message: "Empty command".to_string(),
+        };
+    }
+
+    let output = Command::new(parts[0])
+        .args(&parts[1..])
+        .current_dir(env_root)
+        .output();
+
+    match output {
+        Ok(output) => {
+            let succeeds = output.status.success();
+            GateResult {
+                gate_type: "CommandSucceeds".to_string(),
+                passed: succeeds,
+                message: format!("Command '{}' succeeded: {}", command, succeeds),
+            }
+        }
+        Err(e) => GateResult {
+            gate_type: "CommandSucceeds".to_string(),
+            passed: false,
+            message: format!("Failed to execute command '{}': {}", command, e),
+        },
+    }
 }
 
-fn eval_doctor_passes(env_root: &Path) -> GateResult {
-    eval_gate!(
-        "DoctorPasses",
-        crate::eval_helpers::doctor_passes(env_root),
-        |passes| (passes, format!("Store passes 'qipu doctor': {}", passes))
-    )
+fn eval_doctor_passes(_env_root: &Path) -> GateResult {
+    GateResult {
+        gate_type: "DoctorPasses".to_string(),
+        passed: false,
+        message: "DoctorPasses gate not implemented (requires qipu).".to_string(),
+    }
 }
 
 fn eval_no_transcript_errors(env_root: &Path) -> GateResult {
@@ -236,7 +265,6 @@ fn run_judge_evaluation(
         .with_context(|| format!("Failed to load rubric from {}", rubric_path.display()))?;
 
     let transcript_path = env_root.join("transcript.raw.txt");
-    let store_path = env_root.join("store_snapshot/export.json");
 
     let runner = crate::session::SessionRunner::new();
     let prompt = format!(
@@ -246,7 +274,6 @@ Task: {}
 
 Files to review:
 - @{} - The interaction transcript
-- @{} - Store state after interaction
 
 Use the rubric at {} for evaluation.
 
@@ -265,7 +292,6 @@ Return evaluation as JSON with this structure:
 Provide JSON only, no additional text."#,
         scenario.task.prompt,
         transcript_path.display(),
-        store_path.display(),
         rubric_path.display()
     );
 

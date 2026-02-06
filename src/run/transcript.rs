@@ -11,8 +11,8 @@ pub fn write_transcript_files(
     model: &str,
     qipu_version: &str,
     cache_key: &CacheKey,
-    output: &str,
-    exit_code: i32,
+    _output: &str,
+    _exit_code: i32,
     cost: Option<f64>,
     token_usage: Option<crate::adapter::TokenUsage>,
     duration: std::time::Duration,
@@ -20,7 +20,7 @@ pub fn write_transcript_files(
     outcome: &str,
     setup_success: bool,
     setup_commands: Vec<(String, bool, String)>,
-    env: &TestEnv,
+    _env: &TestEnv,
 ) -> anyhow::Result<()> {
     // Note: transcript.raw.txt and execution event are already written in run_evaluation_flow
 

@@ -8,10 +8,6 @@ mod commands;
 mod config;
 mod eval_helpers;
 #[cfg(test)]
-mod eval_tests_doctor;
-#[cfg(test)]
-mod eval_tests_gates;
-#[cfg(test)]
 mod eval_tests_score;
 mod evaluation;
 mod fixture;
