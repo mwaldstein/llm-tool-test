@@ -350,24 +350,31 @@ Implement the three new script hooks per specs/scripts.md.
 
 ### 4.4 Implement script gate evaluation
 
-**Files:**
-- `src/evaluation.rs` — Add the `Script` arm to the gate evaluator match:
-  ```rust
-  Gate::Script { command, description } => {
-      let result = script_runner.run(command, 30)?;
-      // Try to parse stdout as JSON with {passed, message}
-      // Fall back to exit code
-      GateResult { ... }
-  }
-  ```
-  
-  This requires the gate evaluator to have access to a `ScriptRunner`. Options:
-  - Pass `ScriptRunner` to `evaluate()` and through to `GateEvaluator`.
-  - Or construct it inside `evaluate()` from the scenario and paths.
-  
-  The `GateEvaluator` trait currently takes `&self` and `env_root: &Path`. For script gates, it also needs the script runner context. Simplest approach: pass a context struct to `evaluate()` that includes both `env_root` and the runner.
+**Status:** ✅ Complete
 
-**Verify:** Unit test with a script gate that returns JSON. Integration test with a scenario using a script gate.
+**Files:**
+- ✅ `src/evaluation.rs` — Added the `Script` arm to the gate evaluator match:
+  - Created `EvaluationContext` struct to pass both `env_root` and optional `ScriptRunner`
+  - Updated `GateEvaluator` trait to accept `&EvaluationContext` instead of individual parameters
+  - Implemented `eval_script()` function that:
+    - Uses the `ScriptRunner` to execute the script with a 30-second timeout
+    - Attempts to parse stdout as JSON with `{passed, message}` structure
+    - Falls back to exit code-based pass/fail if JSON parsing fails
+    - Returns appropriate error messages for timeout cases
+  - Updated `evaluate_gates()` and `evaluate()` functions to use the new context
+  - Added 5 comprehensive unit tests:
+    - `script_gate_with_exit_code_success` - verifies exit code 0 passes
+    - `script_gate_with_exit_code_failure` - verifies non-zero exit code fails
+    - `script_gate_with_json_output` - verifies JSON `{passed: true}` parsing
+    - `script_gate_with_json_output_failure` - verifies JSON `{passed: false}` parsing
+    - `script_gate_without_runner_fails` - verifies graceful error without runner
+
+- ✅ `src/run/execution.rs` — Updated `run_evaluation_flow()` to:
+  - Create a `ScriptRunner` with the correct environment variables before evaluation
+  - Pass the `ScriptRunner` to the `evaluate()` function
+  - Ensure transcript and events paths are available to script gates
+
+**Verify:** ✅ All unit tests pass (5 new script gate tests + 154 existing). All 18 integration tests pass.
 
 ### 4.5 Implement custom evaluators
 

@@ -1,5 +1,6 @@
 use crate::judge::{load_rubric, JudgeResponse};
 use crate::scenario::{Gate, Scenario};
+use crate::script_runner::ScriptRunner;
 use crate::transcript::EfficiencyMetrics;
 use anyhow::{Context, Result};
 use regex::Regex;
@@ -29,45 +30,45 @@ macro_rules! eval_gate {
     };
 }
 
+/// Context passed to gate evaluators, containing environment and optional script runner.
+pub struct EvaluationContext<'a> {
+    pub env_root: &'a Path,
+    pub target_binary: &'a str,
+    pub command_pattern: Option<&'a str>,
+    pub script_runner: Option<&'a ScriptRunner>,
+}
+
 pub trait GateEvaluator {
-    fn evaluate(
-        &self,
-        env_root: &Path,
-        target_binary: &str,
-        command_pattern: Option<&str>,
-    ) -> GateResult;
+    fn evaluate(&self, ctx: &EvaluationContext<'_>) -> GateResult;
 }
 
 impl GateEvaluator for Gate {
-    fn evaluate(
-        &self,
-        env_root: &Path,
-        target_binary: &str,
-        command_pattern: Option<&str>,
-    ) -> GateResult {
+    fn evaluate(&self, ctx: &EvaluationContext<'_>) -> GateResult {
         match self {
-            Gate::CommandSucceeds { command } => eval_command_succeeds(command, env_root),
+            Gate::CommandSucceeds { command } => eval_command_succeeds(command, ctx.env_root),
             Gate::CommandOutputContains { command, substring } => {
-                eval_command_output_contains(command, substring, env_root)
+                eval_command_output_contains(command, substring, ctx.env_root)
             }
             Gate::CommandOutputMatches { command, pattern } => {
-                eval_command_output_matches(command, pattern, env_root)
+                eval_command_output_matches(command, pattern, ctx.env_root)
             }
             Gate::CommandJsonPath {
                 command,
                 path,
                 assertion,
-            } => eval_command_json_path(command, path, assertion, env_root),
-            Gate::FileExists { path } => eval_file_exists(path, env_root),
-            Gate::FileContains { path, substring } => eval_file_contains(path, substring, env_root),
-            Gate::FileMatches { path, pattern } => eval_file_matches(path, pattern, env_root),
+            } => eval_command_json_path(command, path, assertion, ctx.env_root),
+            Gate::FileExists { path } => eval_file_exists(path, ctx.env_root),
+            Gate::FileContains { path, substring } => {
+                eval_file_contains(path, substring, ctx.env_root)
+            }
+            Gate::FileMatches { path, pattern } => eval_file_matches(path, pattern, ctx.env_root),
             Gate::NoTranscriptErrors => {
-                eval_no_transcript_errors(env_root, target_binary, command_pattern)
+                eval_no_transcript_errors(ctx.env_root, ctx.target_binary, ctx.command_pattern)
             }
             Gate::Script {
                 command,
                 description,
-            } => eval_script(command, description),
+            } => eval_script(command, description, ctx.script_runner),
         }
     }
 }
@@ -467,13 +468,68 @@ fn evaluate_json_assertion(
     Err("assertion must be one of: exists, equals <value>, contains <substring>, len >= N, len == N, len > N".to_string())
 }
 
-fn eval_script(command: &str, description: &str) -> GateResult {
+fn eval_script(
+    command: &str,
+    description: &str,
+    script_runner: Option<&ScriptRunner>,
+) -> GateResult {
+    let runner = match script_runner {
+        Some(r) => r,
+        None => {
+            return GateResult {
+                gate_type: "Script".to_string(),
+                passed: false,
+                message: "Script runner not available for script gate evaluation".to_string(),
+            };
+        }
+    };
+
+    let result = match runner.run(command, 30) {
+        Ok(r) => r,
+        Err(e) => {
+            return GateResult {
+                gate_type: "Script".to_string(),
+                passed: false,
+                message: format!("Failed to execute script '{}': {}", command, e),
+            };
+        }
+    };
+
+    if result.timed_out {
+        return GateResult {
+            gate_type: "Script".to_string(),
+            passed: false,
+            message: format!("Script '{}' timed out after 30 seconds", command),
+        };
+    }
+
+    // Try to parse stdout as JSON with {passed, message}
+    #[derive(Deserialize)]
+    struct ScriptGateOutput {
+        passed: bool,
+        message: Option<String>,
+    }
+
+    let stdout = result.stdout.trim();
+    if let Ok(parsed) = serde_json::from_str::<ScriptGateOutput>(stdout) {
+        return GateResult {
+            gate_type: "Script".to_string(),
+            passed: parsed.passed,
+            message: parsed.message.unwrap_or_else(|| description.to_string()),
+        };
+    }
+
+    // Fall back to exit code
+    let passed = result.exit_code == 0;
     GateResult {
         gate_type: "Script".to_string(),
-        passed: false,
+        passed,
         message: format!(
-            "Script gate not implemented yet for '{}' ({})",
-            command, description
+            "Script '{}' {} (exit code: {}, description: {})",
+            command,
+            if passed { "passed" } else { "failed" },
+            result.exit_code,
+            description
         ),
     }
 }
@@ -544,17 +600,12 @@ pub struct GateResult {
     pub message: String,
 }
 
-fn evaluate_gates(
-    gates: &[Gate],
-    env_root: &Path,
-    target_binary: &str,
-    command_pattern: Option<&str>,
-) -> (Vec<GateResult>, usize) {
+fn evaluate_gates(gates: &[Gate], ctx: &EvaluationContext<'_>) -> (Vec<GateResult>, usize) {
     let mut details = Vec::new();
     let mut gates_passed = 0;
 
     for gate in gates {
-        let result = gate.evaluate(env_root, target_binary, command_pattern);
+        let result = gate.evaluate(ctx);
 
         if result.passed {
             println!("Gate {} passed: {}", result.gate_type, result.message);
@@ -696,15 +747,22 @@ fn build_metrics(
     }
 }
 
-pub fn evaluate(scenario: &Scenario, env_root: &Path, no_judge: bool) -> Result<EvaluationMetrics> {
+pub fn evaluate(
+    scenario: &Scenario,
+    env_root: &Path,
+    no_judge: bool,
+    script_runner: Option<&ScriptRunner>,
+) -> Result<EvaluationMetrics> {
     println!("Evaluating results for scenario: {}", scenario.name);
 
-    let (details, gates_passed) = evaluate_gates(
-        &scenario.evaluation.gates,
+    let ctx = EvaluationContext {
         env_root,
-        &scenario.target.binary,
-        scenario.target.command_pattern.as_deref(),
-    );
+        target_binary: &scenario.target.binary,
+        command_pattern: scenario.target.command_pattern.as_deref(),
+        script_runner,
+    };
+
+    let (details, gates_passed) = evaluate_gates(&scenario.evaluation.gates, &ctx);
     let (judge_score, judge_response) = maybe_run_judge(scenario, env_root, no_judge)?;
     let metrics = build_metrics(
         scenario,
@@ -824,5 +882,108 @@ mod tests {
 
         let result = eval_file_matches("logs.txt", r"run-\d+", env.path());
         assert!(result.passed);
+    }
+
+    #[test]
+    fn script_gate_with_exit_code_success() {
+        let temp = tempfile::tempdir().unwrap();
+        let runner = ScriptRunner::new(
+            temp.path().to_path_buf(),
+            std::path::PathBuf::from("/tmp/results"),
+            "test".to_string(),
+            "test_agent".to_string(),
+            "test_model".to_string(),
+            None,
+            None,
+            std::collections::HashMap::new(),
+        );
+
+        let result = eval_script("true", "should pass", Some(&runner));
+        assert!(result.passed, "Exit code 0 should pass: {}", result.message);
+    }
+
+    #[test]
+    fn script_gate_with_exit_code_failure() {
+        let temp = tempfile::tempdir().unwrap();
+        let runner = ScriptRunner::new(
+            temp.path().to_path_buf(),
+            std::path::PathBuf::from("/tmp/results"),
+            "test".to_string(),
+            "test_agent".to_string(),
+            "test_model".to_string(),
+            None,
+            None,
+            std::collections::HashMap::new(),
+        );
+
+        let result = eval_script("false", "should fail", Some(&runner));
+        assert!(
+            !result.passed,
+            "Exit code 1 should fail: {}",
+            result.message
+        );
+    }
+
+    #[test]
+    fn script_gate_with_json_output() {
+        let temp = tempfile::tempdir().unwrap();
+        let runner = ScriptRunner::new(
+            temp.path().to_path_buf(),
+            std::path::PathBuf::from("/tmp/results"),
+            "test".to_string(),
+            "test_agent".to_string(),
+            "test_model".to_string(),
+            None,
+            None,
+            std::collections::HashMap::new(),
+        );
+
+        // Script outputs JSON with passed=true
+        let result = eval_script(
+            "echo '{\"passed\": true, \"message\": \"Custom check passed\"}'",
+            "json gate",
+            Some(&runner),
+        );
+        assert!(
+            result.passed,
+            "JSON passed=true should pass: {}",
+            result.message
+        );
+        assert!(result.message.contains("Custom check passed"));
+    }
+
+    #[test]
+    fn script_gate_with_json_output_failure() {
+        let temp = tempfile::tempdir().unwrap();
+        let runner = ScriptRunner::new(
+            temp.path().to_path_buf(),
+            std::path::PathBuf::from("/tmp/results"),
+            "test".to_string(),
+            "test_agent".to_string(),
+            "test_model".to_string(),
+            None,
+            None,
+            std::collections::HashMap::new(),
+        );
+
+        // Script outputs JSON with passed=false
+        let result = eval_script(
+            "echo '{\"passed\": false, \"message\": \"Custom check failed\"}'",
+            "json gate",
+            Some(&runner),
+        );
+        assert!(
+            !result.passed,
+            "JSON passed=false should fail: {}",
+            result.message
+        );
+        assert!(result.message.contains("Custom check failed"));
+    }
+
+    #[test]
+    fn script_gate_without_runner_fails() {
+        let result = eval_script("true", "no runner", None);
+        assert!(!result.passed);
+        assert!(result.message.contains("Script runner not available"));
     }
 }

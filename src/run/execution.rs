@@ -129,6 +129,7 @@ pub fn run_evaluation_flow(
 
     // Run post-execution scripts after transcript writing, before evaluation
     let transcript_path = transcript_dir.join("transcript.raw.txt");
+    let events_path = writer.base_dir.join("events.jsonl");
     run_post_scripts(
         s,
         env,
@@ -139,8 +140,20 @@ pub fn run_evaluation_flow(
         writer,
     )?;
 
+    // Create script runner for evaluation (used by script gates)
+    let script_runner = ScriptRunner::new(
+        env.root.clone(),
+        results_dir.to_path_buf(),
+        s.name.clone(),
+        tool.to_string(),
+        model.to_string(),
+        Some(transcript_path),
+        Some(events_path),
+        s.target.env.clone().unwrap_or_default(),
+    );
+
     println!("Running evaluation...");
-    let metrics = crate::evaluation::evaluate(s, &env.root, no_judge)?;
+    let metrics = crate::evaluation::evaluate(s, &env.root, no_judge, Some(&script_runner))?;
     println!("Evaluation metrics: {:?}", metrics);
 
     Ok((output, exit_code, cost, token_usage, duration, metrics))
