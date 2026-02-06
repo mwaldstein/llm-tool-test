@@ -13,27 +13,9 @@ fn test_compute_composite_score_with_judge() {
         iteration_ratio: 1.5,
     };
 
-    let quality = crate::store_analysis::QualityMetrics {
-        avg_title_length: 10.0,
-        avg_body_length: 50.0,
-        avg_tags_per_note: 2.0,
-        notes_without_tags: 0,
-        links_per_note: 1.0,
-        orphan_notes: 0,
-        link_type_diversity: 1,
-        type_distribution: std::collections::HashMap::new(),
-        total_notes: 10,
-        total_links: 10,
-    };
+    let composite = compute_composite_score(Some(0.9), 3, 3, &efficiency);
 
-    let composite = compute_composite_score(Some(0.9), 3, 3, &efficiency, &quality);
-
-    let tags_score = (2.0_f64).min(3.0) / 3.0;
-    let links_score = (1.0_f64).min(2.0) / 2.0;
-    let orphan_penalty = 0.0;
-    let quality_component = (tags_score + links_score) / 2.0 - orphan_penalty;
-
-    let expected = (0.50 * 0.9) + (0.30 * 1.0) + (0.10 * 0.8) + (0.10 * quality_component);
+    let expected = (0.55 * 0.9) + (0.35 * 1.0) + (0.10 * 0.8);
     assert!((composite - expected).abs() < 0.001);
 }
 
@@ -49,27 +31,9 @@ fn test_compute_composite_score_without_judge() {
         iteration_ratio: 1.5,
     };
 
-    let quality = crate::store_analysis::QualityMetrics {
-        avg_title_length: 10.0,
-        avg_body_length: 50.0,
-        avg_tags_per_note: 2.0,
-        notes_without_tags: 0,
-        links_per_note: 1.0,
-        orphan_notes: 0,
-        link_type_diversity: 1,
-        type_distribution: std::collections::HashMap::new(),
-        total_notes: 10,
-        total_links: 10,
-    };
+    let composite = compute_composite_score(None, 3, 3, &efficiency);
 
-    let composite = compute_composite_score(None, 3, 3, &efficiency, &quality);
-
-    let tags_score = (2.0_f64).min(3.0) / 3.0;
-    let links_score = (1.0_f64).min(2.0) / 2.0;
-    let orphan_penalty = 0.0;
-    let quality_component = (tags_score + links_score) / 2.0 - orphan_penalty;
-
-    let expected = (0.50 * 0.0) + (0.30 * 1.0) + (0.10 * 0.8) + (0.10 * quality_component);
+    let expected = (0.55 * 0.0) + (0.35 * 1.0) + (0.10 * 0.8);
     assert!((composite - expected).abs() < 0.001);
 }
 
@@ -85,20 +49,7 @@ fn test_compute_composite_score_empty_store() {
         iteration_ratio: 0.0,
     };
 
-    let quality = crate::store_analysis::QualityMetrics {
-        avg_title_length: 0.0,
-        avg_body_length: 0.0,
-        avg_tags_per_note: 0.0,
-        notes_without_tags: 0,
-        links_per_note: 0.0,
-        orphan_notes: 0,
-        link_type_diversity: 0,
-        type_distribution: std::collections::HashMap::new(),
-        total_notes: 0,
-        total_links: 0,
-    };
-
-    let composite = compute_composite_score(None, 0, 0, &efficiency, &quality);
+    let composite = compute_composite_score(None, 0, 0, &efficiency);
 
     assert_eq!(composite, 0.0);
 }
@@ -115,20 +66,7 @@ fn test_compute_composite_score_clamped() {
         iteration_ratio: 1.5,
     };
 
-    let quality = crate::store_analysis::QualityMetrics {
-        avg_title_length: 10.0,
-        avg_body_length: 50.0,
-        avg_tags_per_note: 10.0,
-        notes_without_tags: 0,
-        links_per_note: 10.0,
-        orphan_notes: 0,
-        link_type_diversity: 1,
-        type_distribution: std::collections::HashMap::new(),
-        total_notes: 10,
-        total_links: 10,
-    };
-
-    let composite = compute_composite_score(Some(1.5), 3, 3, &efficiency, &quality);
+    let composite = compute_composite_score(Some(1.5), 3, 3, &efficiency);
 
     assert!(composite <= 1.0);
     assert!(composite >= 0.0);

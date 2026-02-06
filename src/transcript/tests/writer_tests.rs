@@ -1,4 +1,4 @@
-use super::super::types::{EfficiencyReport, EvaluationReport, QualityReport, RunReport};
+use super::super::types::{EfficiencyReport, EvaluationReport, RunReport};
 use super::super::writer::TranscriptWriter;
 use std::fs;
 
@@ -18,8 +18,6 @@ fn test_write_report_basic() {
         outcome: "Pass".to_string(),
         gates_passed: 3,
         gates_total: 3,
-        note_count: 5,
-        link_count: 3,
         composite_score: Some(0.82),
         gate_details: vec![],
         efficiency: EfficiencyReport {
@@ -28,13 +26,6 @@ fn test_write_report_basic() {
             error_count: 0,
             first_try_success_rate: 0.9,
             iteration_ratio: 2.0,
-        },
-        quality: QualityReport {
-            avg_title_length: 15.0,
-            avg_body_length: 250.0,
-            avg_tags_per_note: 1.2,
-            links_per_note: 0.6,
-            orphan_notes: 1,
         },
         setup_success: true,
         setup_commands: vec![],
@@ -68,8 +59,6 @@ fn test_write_evaluation_basic() {
         judge_score_1_to_5: Some(4.0),
         gates_passed: 2,
         gates_total: 3,
-        note_count: 5,
-        link_count: 2,
         duration_secs: 30.0,
         cost_usd: Some(0.015),
         composite_score: 0.82,
@@ -92,8 +81,6 @@ fn test_write_evaluation_basic() {
     assert!(content.contains("gpt-4o"));
     assert!(content.contains("**4** / 5"));
     assert!(content.contains("2/3"));
-    assert!(content.contains("**Notes Created**: 5"));
-    assert!(content.contains("**Links Created**: 2"));
     assert!(content.contains("30.00s"));
     assert!(content.contains("$0.0150"));
     assert!(content.contains("0.82"));
@@ -126,8 +113,6 @@ fn test_write_evaluation_without_judge_score() {
         judge_score_1_to_5: None,
         gates_passed: 1,
         gates_total: 2,
-        note_count: 3,
-        link_count: 1,
         duration_secs: 20.0,
         cost_usd: Some(0.01),
         composite_score: 0.75,

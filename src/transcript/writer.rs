@@ -188,8 +188,6 @@ impl TranscriptWriter {
             "- **Gates Passed**: {}/{}\n",
             report.gates_passed, report.gates_total
         ));
-        content.push_str(&format!("- **Notes Created**: {}\n", report.note_count));
-        content.push_str(&format!("- **Links Created**: {}\n", report.link_count));
         if let Some(score) = report.composite_score {
             content.push_str(&format!("- **Composite Score**: {:.2}\n", score));
         }
@@ -233,37 +231,12 @@ impl TranscriptWriter {
         ));
     }
 
-    fn write_quality_section(&self, report: &RunReport, content: &mut String) {
-        content.push_str("## Quality\n\n");
-        content.push_str(&format!(
-            "- **Average Title Length**: {:.1}\n",
-            report.quality.avg_title_length
-        ));
-        content.push_str(&format!(
-            "- **Average Body Length**: {:.1}\n",
-            report.quality.avg_body_length
-        ));
-        content.push_str(&format!(
-            "- **Average Tags per Note**: {:.2}\n",
-            report.quality.avg_tags_per_note
-        ));
-        content.push_str(&format!(
-            "- **Links per Note**: {:.2}\n",
-            report.quality.links_per_note
-        ));
-        content.push_str(&format!(
-            "- **Orphan Notes**: {}\n",
-            report.quality.orphan_notes
-        ));
-    }
-
     pub fn write_report(&self, report: &RunReport) -> anyhow::Result<()> {
         let mut content = String::new();
         self.write_report_header(report, &mut content);
         self.write_execution_section(report, &mut content);
         self.write_evaluation_section(report, &mut content);
         self.write_efficiency_section(report, &mut content);
-        self.write_quality_section(report, &mut content);
 
         fs::write(self.results_dir.join("report.md"), content)?;
         Ok(())
@@ -290,8 +263,6 @@ impl TranscriptWriter {
             "- **Gates Passed**: {}/{}\n",
             evaluation.gates_passed, evaluation.gates_total
         ));
-        content.push_str(&format!("- **Notes Created**: {}\n", evaluation.note_count));
-        content.push_str(&format!("- **Links Created**: {}\n", evaluation.link_count));
         content.push_str(&format!(
             "- **Duration**: {:.2}s\n",
             evaluation.duration_secs

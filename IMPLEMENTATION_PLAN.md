@@ -23,21 +23,27 @@ These changes remove dead code and qipu coupling. No new functionality.
 
 ### 1.2 Remove `QualityMetrics` / `StoreAnalyzer` from evaluation
 
+**Status:** ✅ Complete
+
 The `store_analysis.rs` module and `QualityMetrics` are qipu-specific (they parse a notes/links export format). Remove them from the evaluation pipeline. This is a larger change that touches multiple files.
 
 **Files:**
-- `src/store_analysis.rs` — Delete the entire file.
-- `src/evaluation.rs` — Remove `use crate::store_analysis::QualityMetrics;`. Remove calls to `compute_quality_or_default()`. Remove quality from `EvaluationMetrics` struct and `build_metrics()`. Remove the quality component from `compute_composite_score()` in `eval_helpers.rs`.
-- `src/eval_helpers.rs` — Delete `compute_quality_metrics()`. Update `compute_composite_score()` to remove the quality weight (redistribute: e.g., judge 50%, gates 35%, efficiency 15% — or just remove composite scoring entirely per the spec recommendation).
-- `src/run/transcript.rs` — Remove `quality: ...` fields from `RunReport` and `EvaluationReport` construction.
-- `src/run/records.rs` — Remove `quality: QualityMetricsRecord { ... }` from `build_result_record()` and `handle_dry_run()`.
-- `src/results/types/mod.rs` — Delete `QualityMetricsRecord` struct. Remove `quality` field from `EvaluationMetricsRecord`. Remove `note_count` and `link_count` fields (these are qipu-specific counts).
-- `src/transcript/types.rs` — Delete `QualityReport` struct. Remove `quality` field from `RunReport`. Remove `note_count` and `link_count` from `RunReport` and `EvaluationReport`.
-- `src/transcript/writer.rs` — Delete `write_quality_section()`. Remove quality from `write_report()`. Remove note/link counts from `write_evaluation_section()` and `write_evaluation()`.
-- `src/output.rs` — Remove `Notes:` and `Links:` lines from `print_result_summary()`.
-- `src/main.rs` or `src/lib.rs` — Remove `mod store_analysis;` declaration.
+- ✅ `src/store_analysis.rs` — Deleted the entire file.
+- ✅ `src/evaluation.rs` — Removed `use crate::store_analysis::QualityMetrics;`. Removed calls to `compute_quality_or_default()`. Removed quality from `EvaluationMetrics` struct and `build_metrics()`. Removed note_count and link_count fields.
+- ✅ `src/eval_helpers.rs` — Deleted `compute_quality_metrics()`. Updated `compute_composite_score()` to remove the quality weight (redistributed: judge 55%, gates 35%, efficiency 10%).
+- ✅ `src/run/transcript.rs` — Removed `quality: ...` fields and note/link count fields from `RunReport` and `EvaluationReport` construction.
+- ✅ `src/run/records.rs` — Removed `quality: QualityMetricsRecord { ... }` and note/link counts from `build_result_record()` and `handle_dry_run()`.
+- ✅ `src/results/types/mod.rs` — Deleted `QualityMetricsRecord` struct. Removed `quality` field from `EvaluationMetricsRecord`. Removed `note_count` and `link_count` fields (these are qipu-specific counts).
+- ✅ `src/transcript/types.rs` — Deleted `QualityReport` struct. Removed `quality` field and note/link counts from `RunReport` and `EvaluationReport`.
+- ✅ `src/transcript/writer.rs` — Deleted `write_quality_section()`. Removed quality from `write_report()`. Removed note/link counts from `write_evaluation_section()` and `write_evaluation()`.
+- ✅ `src/output.rs` — Removed `Notes:` and `Links:` lines from `print_result_summary()`.
+- ✅ `src/commands.rs` — Removed `Notes:` and `Links:` lines from output.
+- ✅ `src/main.rs` — Removed `mod store_analysis;` declaration.
+- ✅ Test files updated: `src/results/test_helpers.rs`, `src/results/types/tests.rs`, `src/transcript/tests/writer_tests.rs`, `src/eval_tests_score.rs`
 
-**Verify:** `cargo build`, `cargo test`. Some tests in `store_analysis.rs` will be deleted with the file. Check that remaining tests pass.
+**Verify:** `cargo build` ✅ — no compile errors. 
+
+**Note:** Tests in `eval_tests_doctor.rs` and `eval_tests_gates.rs` are failing because they depend on qipu binary. These will be addressed in Phase 1.3 which removes qipu-specific eval helpers and their tests.
 
 ### 1.3 Remove qipu-specific eval helpers
 

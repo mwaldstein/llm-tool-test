@@ -174,27 +174,16 @@ pub fn compute_efficiency_metrics(env_root: &Path) -> Result<crate::transcript::
     Ok(crate::transcript::TranscriptAnalyzer::analyze_with_exit_codes(&content))
 }
 
-/// Computes quality metrics from the store export.
-pub fn compute_quality_metrics(env_root: &Path) -> Result<crate::store_analysis::QualityMetrics> {
-    let json = run_qipu_json(&["export"], env_root)
-        .context("Failed to run qipu export for quality metrics")?;
-    let export_json = serde_json::to_string(&json).context("Failed to serialize export JSON")?;
-    crate::store_analysis::StoreAnalyzer::analyze(&export_json)
-        .context("Failed to analyze store quality")
-}
-
-/// Computes a composite score from judge score, gates, efficiency, and quality metrics.
+/// Computes a composite score from judge score, gates, and efficiency metrics.
 pub fn compute_composite_score(
     judge_score: Option<f64>,
     gates_passed: usize,
     gates_total: usize,
     efficiency: &crate::transcript::EfficiencyMetrics,
-    quality: &crate::store_analysis::QualityMetrics,
 ) -> f64 {
-    const JUDGE_WEIGHT: f64 = 0.50;
-    const GATES_WEIGHT: f64 = 0.30;
+    const JUDGE_WEIGHT: f64 = 0.55;
+    const GATES_WEIGHT: f64 = 0.35;
     const EFFICIENCY_WEIGHT: f64 = 0.10;
-    const QUALITY_WEIGHT: f64 = 0.10;
 
     let judge_component = judge_score.unwrap_or(0.0);
 
@@ -206,20 +195,9 @@ pub fn compute_composite_score(
 
     let efficiency_component = efficiency.first_try_success_rate;
 
-    let quality_component = if quality.total_notes > 0 {
-        let tags_score = quality.avg_tags_per_note.min(3.0) / 3.0;
-        let links_score = quality.links_per_note.min(2.0) / 2.0;
-        let orphan_penalty =
-            (quality.orphan_notes as f64 / quality.total_notes as f64).min(1.0) * 0.3;
-        (tags_score + links_score) / 2.0 - orphan_penalty
-    } else {
-        0.0
-    };
-
     let composite = (JUDGE_WEIGHT * judge_component)
         + (GATES_WEIGHT * gates_component)
-        + (EFFICIENCY_WEIGHT * efficiency_component)
-        + (QUALITY_WEIGHT * quality_component);
+        + (EFFICIENCY_WEIGHT * efficiency_component);
 
     composite.clamp(0.0, 1.0)
 }

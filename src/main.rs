@@ -21,7 +21,6 @@ mod results;
 mod run;
 mod scenario;
 mod session;
-mod store_analysis;
 mod transcript;
 mod utils;
 

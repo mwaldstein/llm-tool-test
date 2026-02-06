@@ -32,12 +32,9 @@ pub struct RunReport {
     pub outcome: String,
     pub gates_passed: usize,
     pub gates_total: usize,
-    pub note_count: usize,
-    pub link_count: usize,
     pub composite_score: Option<f64>,
     pub gate_details: Vec<GateDetail>,
     pub efficiency: EfficiencyReport,
-    pub quality: QualityReport,
     pub setup_success: bool,
     pub setup_commands: Vec<SetupCommandResult>,
 }
@@ -66,15 +63,6 @@ pub(crate) struct EfficiencyReport {
 }
 
 #[derive(Debug)]
-pub(crate) struct QualityReport {
-    pub avg_title_length: f64,
-    pub avg_body_length: f64,
-    pub avg_tags_per_note: f64,
-    pub links_per_note: f64,
-    pub orphan_notes: usize,
-}
-
-#[derive(Debug)]
 pub struct EvaluationReport {
     pub scenario_id: String,
     pub tool: String,
@@ -83,8 +71,6 @@ pub struct EvaluationReport {
     pub judge_score_1_to_5: Option<f64>,
     pub gates_passed: usize,
     pub gates_total: usize,
-    pub note_count: usize,
-    pub link_count: usize,
     pub duration_secs: f64,
     pub cost_usd: Option<f64>,
     pub composite_score: f64,

@@ -69,8 +69,6 @@ pub fn print_result_summary(record: &ResultRecord) {
         "Gates: {}/{}",
         record.metrics.gates_passed, record.metrics.gates_total
     );
-    println!("Notes: {}", record.metrics.note_count);
-    println!("Links: {}", record.metrics.link_count);
     println!("Duration: {:.2}s", record.duration_secs);
     println!(
         "Commands: {} ({} unique, {} errors, {} help, {} retries)",

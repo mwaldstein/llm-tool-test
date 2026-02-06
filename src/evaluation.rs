@@ -1,6 +1,5 @@
 use crate::judge::{load_rubric, JudgeResponse};
 use crate::scenario::{Gate, Scenario};
-use crate::store_analysis::QualityMetrics;
 use crate::transcript::EfficiencyMetrics;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
@@ -192,13 +191,10 @@ impl fmt::Display for ScoreTier {
 pub struct EvaluationMetrics {
     pub gates_passed: usize,
     pub gates_total: usize,
-    pub note_count: usize,
-    pub link_count: usize,
     pub details: Vec<GateResult>,
     pub judge_score: Option<f64>,
     pub judge_response: Option<JudgeResponse>,
     pub efficiency: EfficiencyMetrics,
-    pub quality: QualityMetrics,
     pub composite_score: f64,
 }
 
@@ -323,21 +319,6 @@ fn compute_efficiency_or_default(env_root: &Path) -> EfficiencyMetrics {
     })
 }
 
-fn compute_quality_or_default(env_root: &Path) -> QualityMetrics {
-    crate::eval_helpers::compute_quality_metrics(env_root).unwrap_or_else(|_| QualityMetrics {
-        avg_title_length: 0.0,
-        avg_body_length: 0.0,
-        avg_tags_per_note: 0.0,
-        notes_without_tags: 0,
-        links_per_note: 0.0,
-        orphan_notes: 0,
-        link_type_diversity: 0,
-        type_distribution: std::collections::HashMap::new(),
-        total_notes: 0,
-        total_links: 0,
-    })
-}
-
 fn build_metrics(
     scenario: &Scenario,
     env_root: &Path,
@@ -347,28 +328,20 @@ fn build_metrics(
     judge_response: Option<JudgeResponse>,
 ) -> EvaluationMetrics {
     let efficiency = compute_efficiency_or_default(env_root);
-    let quality = compute_quality_or_default(env_root);
     let composite_score = crate::eval_helpers::compute_composite_score(
         judge_score,
         gates_passed,
         scenario.evaluation.gates.len(),
         &efficiency,
-        &quality,
     );
-
-    let note_count = crate::eval_helpers::count_notes(env_root).unwrap_or(0);
-    let link_count = crate::eval_helpers::count_links(env_root).unwrap_or(0);
 
     EvaluationMetrics {
         gates_passed,
         gates_total: scenario.evaluation.gates.len(),
-        note_count,
-        link_count,
         details,
         judge_score,
         judge_response,
         efficiency,
-        quality,
         composite_score,
     }
 }

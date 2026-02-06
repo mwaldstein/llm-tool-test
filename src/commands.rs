@@ -245,8 +245,6 @@ pub fn handle_show_command(name: &str, results_db: &ResultsDB) -> anyhow::Result
                 "Gates: {}/{}",
                 r.metrics.gates_passed, r.metrics.gates_total
             );
-            println!("Notes: {}", r.metrics.note_count);
-            println!("Links: {}", r.metrics.link_count);
             if let Some(score) = r.judge_score {
                 let tier = ScoreTier::from_score(score);
                 println!("Judge Score: {:.2} ({})", score, tier);

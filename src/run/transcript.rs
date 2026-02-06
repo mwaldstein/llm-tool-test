@@ -55,8 +55,6 @@ pub fn write_transcript_files(
         outcome: outcome.to_string(),
         gates_passed: metrics.gates_passed,
         gates_total: metrics.gates_total,
-        note_count: metrics.note_count,
-        link_count: metrics.link_count,
         composite_score: Some(metrics.composite_score),
         gate_details: metrics
             .details
@@ -73,13 +71,6 @@ pub fn write_transcript_files(
             error_count: metrics.efficiency.error_count,
             first_try_success_rate: metrics.efficiency.first_try_success_rate,
             iteration_ratio: metrics.efficiency.iteration_ratio,
-        },
-        quality: crate::transcript::types::QualityReport {
-            avg_title_length: metrics.quality.avg_title_length,
-            avg_body_length: metrics.quality.avg_body_length,
-            avg_tags_per_note: metrics.quality.avg_tags_per_note,
-            links_per_note: metrics.quality.links_per_note,
-            orphan_notes: metrics.quality.orphan_notes,
         },
         setup_success,
         setup_commands: setup_commands
@@ -128,8 +119,6 @@ pub fn write_transcript_files(
         judge_score_1_to_5,
         gates_passed: metrics.gates_passed,
         gates_total: metrics.gates_total,
-        note_count: metrics.note_count,
-        link_count: metrics.link_count,
         duration_secs: duration.as_secs_f64(),
         cost_usd: cost,
         composite_score: metrics.composite_score,

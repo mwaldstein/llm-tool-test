@@ -16,7 +16,7 @@ pub fn build_result_record(
     cost: Option<f64>,
     transcript_path: String,
 ) -> ResultRecord {
-    use crate::results::{EfficiencyMetricsRecord, GateResultRecord, QualityMetricsRecord};
+    use crate::results::{EfficiencyMetricsRecord, GateResultRecord};
 
     ResultRecord {
         id: crate::results::generate_run_id(),
@@ -32,8 +32,6 @@ pub fn build_result_record(
         metrics: EvaluationMetricsRecord {
             gates_passed: metrics.gates_passed,
             gates_total: metrics.gates_total,
-            note_count: metrics.note_count,
-            link_count: metrics.link_count,
             details: metrics
                 .details
                 .into_iter()
@@ -52,18 +50,6 @@ pub fn build_result_record(
                 first_try_success_rate: metrics.efficiency.first_try_success_rate,
                 iteration_ratio: metrics.efficiency.iteration_ratio,
             },
-            quality: QualityMetricsRecord {
-                avg_title_length: metrics.quality.avg_title_length,
-                avg_body_length: metrics.quality.avg_body_length,
-                avg_tags_per_note: metrics.quality.avg_tags_per_note,
-                notes_without_tags: metrics.quality.notes_without_tags,
-                links_per_note: metrics.quality.links_per_note,
-                orphan_notes: metrics.quality.orphan_notes,
-                link_type_diversity: metrics.quality.link_type_diversity,
-                type_distribution: metrics.quality.type_distribution,
-                total_notes: metrics.quality.total_notes,
-                total_links: metrics.quality.total_links,
-            },
             composite_score: metrics.composite_score,
         },
         judge_score: metrics.judge_score,
@@ -80,7 +66,7 @@ pub fn handle_dry_run(
     qipu_version: &str,
     cache_key: &CacheKey,
 ) -> anyhow::Result<ResultRecord> {
-    use crate::results::{EfficiencyMetricsRecord, EvaluationMetricsRecord, QualityMetricsRecord};
+    use crate::results::{EfficiencyMetricsRecord, EvaluationMetricsRecord};
 
     println!("Dry run - skipping execution");
 
@@ -98,8 +84,6 @@ pub fn handle_dry_run(
         metrics: EvaluationMetricsRecord {
             gates_passed: 0,
             gates_total: 0,
-            note_count: 0,
-            link_count: 0,
             details: vec![],
             efficiency: EfficiencyMetricsRecord {
                 total_commands: 0,
@@ -109,18 +93,6 @@ pub fn handle_dry_run(
                 help_invocations: 0,
                 first_try_success_rate: 0.0,
                 iteration_ratio: 0.0,
-            },
-            quality: QualityMetricsRecord {
-                avg_title_length: 0.0,
-                avg_body_length: 0.0,
-                avg_tags_per_note: 0.0,
-                notes_without_tags: 0,
-                links_per_note: 0.0,
-                orphan_notes: 0,
-                link_type_diversity: 0,
-                type_distribution: std::collections::HashMap::new(),
-                total_notes: 0,
-                total_links: 0,
             },
             composite_score: 0.0,
         },
