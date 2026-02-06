@@ -9,20 +9,11 @@ fn test_cache_key_compute_basic() {
     let prime_output = "";
     let tool = "opencode";
     let model = "gpt-4o";
-    let qipu_version = "abc123";
 
-    let key = CacheKey::compute(
-        scenario_yaml,
-        prompt,
-        prime_output,
-        tool,
-        model,
-        qipu_version,
-    );
+    let key = CacheKey::compute(scenario_yaml, prompt, prime_output, tool, model);
 
     assert_eq!(key.tool, "opencode");
     assert_eq!(key.model, "gpt-4o");
-    assert_eq!(key.qipu_version, "abc123");
     assert!(!key.scenario_hash.is_empty());
     assert!(!key.prompt_hash.is_empty());
     assert!(!key.prime_output_hash.is_empty());
@@ -35,24 +26,9 @@ fn test_cache_key_consistent_hashes() {
     let prime_output = "";
     let tool = "opencode";
     let model = "gpt-4o";
-    let qipu_version = "abc123";
 
-    let key1 = CacheKey::compute(
-        scenario_yaml,
-        prompt,
-        prime_output,
-        tool,
-        model,
-        qipu_version,
-    );
-    let key2 = CacheKey::compute(
-        scenario_yaml,
-        prompt,
-        prime_output,
-        tool,
-        model,
-        qipu_version,
-    );
+    let key1 = CacheKey::compute(scenario_yaml, prompt, prime_output, tool, model);
+    let key2 = CacheKey::compute(scenario_yaml, prompt, prime_output, tool, model);
 
     assert_eq!(key1.scenario_hash, key2.scenario_hash);
     assert_eq!(key1.prompt_hash, key2.prompt_hash);
@@ -67,10 +43,9 @@ fn test_cache_key_different_scenarios() {
     let prime_output = "";
     let tool = "opencode";
     let model = "gpt-4o";
-    let qipu_version = "abc123";
 
-    let key1 = CacheKey::compute(scenario1, prompt, prime_output, tool, model, qipu_version);
-    let key2 = CacheKey::compute(scenario2, prompt, prime_output, tool, model, qipu_version);
+    let key1 = CacheKey::compute(scenario1, prompt, prime_output, tool, model);
+    let key2 = CacheKey::compute(scenario2, prompt, prime_output, tool, model);
 
     assert_ne!(key1.scenario_hash, key2.scenario_hash);
     assert_eq!(key1.prompt_hash, key2.prompt_hash);
@@ -85,24 +60,9 @@ fn test_cache_key_different_prompts() {
     let prime_output = "";
     let tool = "opencode";
     let model = "gpt-4o";
-    let qipu_version = "abc123";
 
-    let key1 = CacheKey::compute(
-        scenario_yaml,
-        prompt1,
-        prime_output,
-        tool,
-        model,
-        qipu_version,
-    );
-    let key2 = CacheKey::compute(
-        scenario_yaml,
-        prompt2,
-        prime_output,
-        tool,
-        model,
-        qipu_version,
-    );
+    let key1 = CacheKey::compute(scenario_yaml, prompt1, prime_output, tool, model);
+    let key2 = CacheKey::compute(scenario_yaml, prompt2, prime_output, tool, model);
 
     assert_eq!(key1.scenario_hash, key2.scenario_hash);
     assert_ne!(key1.prompt_hash, key2.prompt_hash);
@@ -117,24 +77,9 @@ fn test_cache_key_different_tools() {
     let tool1 = "opencode";
     let tool2 = "claude-code";
     let model = "gpt-4o";
-    let qipu_version = "abc123";
 
-    let key1 = CacheKey::compute(
-        scenario_yaml,
-        prompt,
-        prime_output,
-        tool1,
-        model,
-        qipu_version,
-    );
-    let key2 = CacheKey::compute(
-        scenario_yaml,
-        prompt,
-        prime_output,
-        tool2,
-        model,
-        qipu_version,
-    );
+    let key1 = CacheKey::compute(scenario_yaml, prompt, prime_output, tool1, model);
+    let key2 = CacheKey::compute(scenario_yaml, prompt, prime_output, tool2, model);
 
     assert_eq!(key1.scenario_hash, key2.scenario_hash);
     assert_eq!(key1.prompt_hash, key2.prompt_hash);
@@ -150,24 +95,9 @@ fn test_cache_key_different_models() {
     let tool = "opencode";
     let model1 = "gpt-4o";
     let model2 = "claude-sonnet-4";
-    let qipu_version = "abc123";
 
-    let key1 = CacheKey::compute(
-        scenario_yaml,
-        prompt,
-        prime_output,
-        tool,
-        model1,
-        qipu_version,
-    );
-    let key2 = CacheKey::compute(
-        scenario_yaml,
-        prompt,
-        prime_output,
-        tool,
-        model2,
-        qipu_version,
-    );
+    let key1 = CacheKey::compute(scenario_yaml, prompt, prime_output, tool, model1);
+    let key2 = CacheKey::compute(scenario_yaml, prompt, prime_output, tool, model2);
 
     assert_eq!(key1.scenario_hash, key2.scenario_hash);
     assert_eq!(key1.prompt_hash, key2.prompt_hash);
@@ -182,16 +112,8 @@ fn test_cache_key_as_string() {
     let prime_output = "";
     let tool = "opencode";
     let model = "gpt-4o";
-    let qipu_version = "abc123";
 
-    let key = CacheKey::compute(
-        scenario_yaml,
-        prompt,
-        prime_output,
-        tool,
-        model,
-        qipu_version,
-    );
+    let key = CacheKey::compute(scenario_yaml, prompt, prime_output, tool, model);
     let key_string = key.as_string();
 
     assert!(key_string.contains(&key.scenario_hash));
@@ -199,7 +121,6 @@ fn test_cache_key_as_string() {
     assert!(key_string.contains(&key.prime_output_hash));
     assert!(key_string.contains(&key.tool));
     assert!(key_string.contains(&key.model));
-    assert!(key_string.contains(&key.qipu_version));
 }
 
 #[test]
@@ -209,24 +130,9 @@ fn test_cache_key_equality() {
     let prime_output = "";
     let tool = "opencode";
     let model = "gpt-4o";
-    let qipu_version = "abc123";
 
-    let key1 = CacheKey::compute(
-        scenario_yaml,
-        prompt,
-        prime_output,
-        tool,
-        model,
-        qipu_version,
-    );
-    let key2 = CacheKey::compute(
-        scenario_yaml,
-        prompt,
-        prime_output,
-        tool,
-        model,
-        qipu_version,
-    );
+    let key1 = CacheKey::compute(scenario_yaml, prompt, prime_output, tool, model);
+    let key2 = CacheKey::compute(scenario_yaml, prompt, prime_output, tool, model);
 
     assert_eq!(key1, key2);
 }
@@ -239,24 +145,9 @@ fn test_cache_key_different_prime_outputs() {
     let prime_output2 = "note1\nnote2\nnote3";
     let tool = "opencode";
     let model = "gpt-4o";
-    let qipu_version = "abc123";
 
-    let key1 = CacheKey::compute(
-        scenario_yaml,
-        prompt,
-        prime_output1,
-        tool,
-        model,
-        qipu_version,
-    );
-    let key2 = CacheKey::compute(
-        scenario_yaml,
-        prompt,
-        prime_output2,
-        tool,
-        model,
-        qipu_version,
-    );
+    let key1 = CacheKey::compute(scenario_yaml, prompt, prime_output1, tool, model);
+    let key2 = CacheKey::compute(scenario_yaml, prompt, prime_output2, tool, model);
 
     assert_eq!(key1.scenario_hash, key2.scenario_hash);
     assert_eq!(key1.prompt_hash, key2.prompt_hash);
@@ -265,15 +156,12 @@ fn test_cache_key_different_prime_outputs() {
 
 #[test]
 fn test_result_record_json_round_trip() {
-    use std::collections::HashMap;
-
     let original = ResultRecord {
         id: "test-run-id".to_string(),
         scenario_id: "test-scenario".to_string(),
         scenario_hash: "hash123".to_string(),
         tool: "opencode".to_string(),
         model: "gpt-4o".to_string(),
-        qipu_commit: "abc123".to_string(),
         timestamp: chrono::Utc::now(),
         duration_secs: 45.5,
         cost_usd: Some(0.01),
@@ -311,7 +199,6 @@ fn test_result_record_json_round_trip() {
     assert_eq!(deserialized.scenario_hash, original.scenario_hash);
     assert_eq!(deserialized.tool, original.tool);
     assert_eq!(deserialized.model, original.model);
-    assert_eq!(deserialized.qipu_commit, original.qipu_commit);
     assert_eq!(deserialized.timestamp, original.timestamp);
     assert_eq!(deserialized.duration_secs, original.duration_secs);
     assert_eq!(deserialized.cost_usd, original.cost_usd);
@@ -332,15 +219,12 @@ fn test_result_record_json_round_trip() {
 
 #[test]
 fn test_result_record_json_skip_none_cache_key() {
-    use std::collections::HashMap;
-
     let record = ResultRecord {
         id: "test-run-id".to_string(),
         scenario_id: "test-scenario".to_string(),
         scenario_hash: "hash123".to_string(),
         tool: "opencode".to_string(),
         model: "gpt-4o".to_string(),
-        qipu_commit: "abc123".to_string(),
         timestamp: chrono::Utc::now(),
         duration_secs: 45.5,
         cost_usd: Some(0.01),

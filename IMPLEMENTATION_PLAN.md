@@ -63,17 +63,22 @@ The `store_analysis.rs` module and `QualityMetrics` are qipu-specific (they pars
 
 ### 1.4 Remove qipu references from run metadata and cache
 
-**Files:**
-- `src/transcript/types.rs` — Rename `qipu_version` and `qipu_commit` in `RunMetadata` to `target_tool_version` (single field, or remove entirely — the framework doesn't know the target tool's version unless told).
-- `src/run/transcript.rs` — Update `RunMetadata` construction to remove qipu_version/qipu_commit.
-- `src/run/records.rs` — Rename `qipu_commit` to `tool_version` or remove from `ResultRecord`.
-- `src/results/types/mod.rs` — Rename `qipu_commit` field in `ResultRecord`.
-- `src/results/utils.rs` — Rename `get_qipu_version()` to something generic or remove it. It currently runs `git rev-parse HEAD` in the parent directory, which was qipu-specific. Consider making this configurable or removing it.
-- `src/run/mod.rs` — Update all references to `qipu_version`.
-- `src/run/cache.rs` — Update `compute_cache_key()` parameter name.
-- `src/results/types/cache_key.rs` — Update field names.
+**Status:** ✅ Complete
 
-**Verify:** `cargo build`, `cargo test`, `cargo clippy`.
+**Files:**
+- ✅ `src/transcript/types.rs` — Removed `qipu_version` and `qipu_commit` fields from `RunMetadata` struct.
+- ✅ `src/run/transcript.rs` — Updated `write_transcript_files()` to remove qipu_version parameter and no longer set the removed fields.
+- ✅ `src/run/records.rs` — Removed `qipu_version` parameter from `build_result_record()` and `handle_dry_run()`, removed `qipu_commit` field from ResultRecord construction.
+- ✅ `src/results/types/mod.rs` — Removed `qipu_commit` field from `ResultRecord` struct.
+- ✅ `src/results/utils.rs` — Removed `get_qipu_version()` function entirely. Updated module doc comment.
+- ✅ `src/results.rs` — Removed `get_qipu_version` from public exports.
+- ✅ `src/run/mod.rs` — Removed `get_qipu_version()` call and qipu_version variable, updated all call sites to not pass qipu_version.
+- ✅ `src/run/cache.rs` — Removed `qipu_version` parameter from `compute_cache_key()` function and its call to `CacheKey::compute()`.
+- ✅ `src/results/types/cache_key.rs` — Removed `qipu_version` field from `CacheKey` struct and `compute()` method, updated `as_string()` to not include version.
+- ✅ `src/results/types/tests.rs` — Updated all test cases to remove qipu_version parameter and assertions.
+- ✅ `src/results/test_helpers.rs` — Removed `qipu_commit` field from test record construction.
+
+**Verify:** ✅ `cargo build` — no compile errors. ✅ `cargo test` — all 149 tests pass.
 
 ### 1.5 Remove `get_prime_output` from fixture
 

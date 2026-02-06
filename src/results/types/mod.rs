@@ -28,8 +28,6 @@ pub struct ResultRecord {
     pub tool: String,
     /// Model name used for this run
     pub model: String,
-    /// Qipu git commit hash (short)
-    pub qipu_commit: String,
     /// Timestamp when the run completed
     pub timestamp: DateTime<Utc>,
     /// Total duration in seconds

@@ -6,8 +6,6 @@ pub struct RunMetadata {
     pub scenario_hash: String,
     pub tool: String,
     pub model: String,
-    pub qipu_version: String,
-    pub qipu_commit: String,
     pub timestamp: String,
     pub duration_secs: f64,
     pub cost_estimate_usd: Option<f64>,

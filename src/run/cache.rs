@@ -6,16 +6,8 @@ pub fn compute_cache_key(
     prime_output: &str,
     tool: &str,
     model: &str,
-    qipu_version: &str,
 ) -> CacheKey {
-    CacheKey::compute(
-        scenario_yaml,
-        prompt,
-        prime_output,
-        tool,
-        model,
-        qipu_version,
-    )
+    CacheKey::compute(scenario_yaml, prompt, prime_output, tool, model)
 }
 
 pub fn check_cache(cache: &Cache, cache_key: &CacheKey) -> anyhow::Result<Option<ResultRecord>> {

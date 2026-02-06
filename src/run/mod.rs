@@ -34,21 +34,12 @@ pub fn run_single_scenario(
         .and_then(|r| r.timeout_secs)
         .unwrap_or(timeout_secs);
 
-    let qipu_version = crate::results::get_qipu_version()?;
-
     let results_dir = crate::run::utils::get_results_dir(tool, model, &s.name);
     std::fs::create_dir_all(&results_dir)?;
 
     let (env, scenario_yaml, prompt) = setup_scenario_env(s, &results_dir)?;
     let prime_output = env.get_prime_output();
-    let cache_key = compute_cache_key(
-        &scenario_yaml,
-        &prompt,
-        &prime_output,
-        tool,
-        model,
-        &qipu_version,
-    );
+    let cache_key = compute_cache_key(&scenario_yaml, &prompt, &prime_output, tool, model);
 
     if !no_cache {
         if let Some(cached) = check_cache(cache, &cache_key)? {
@@ -59,7 +50,7 @@ pub fn run_single_scenario(
     }
 
     if dry_run {
-        return handle_dry_run(s, tool, model, &qipu_version, &cache_key);
+        return handle_dry_run(s, tool, model, &cache_key);
     }
 
     let adapter = create_adapter_and_check(tool)?;
@@ -86,7 +77,6 @@ pub fn run_single_scenario(
         s,
         tool,
         model,
-        &qipu_version,
         &cache_key,
         &output,
         exit_code,
@@ -105,7 +95,6 @@ pub fn run_single_scenario(
         s,
         tool,
         model,
-        &qipu_version,
         &cache_key,
         metrics,
         outcome,

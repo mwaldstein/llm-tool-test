@@ -31,7 +31,7 @@ pub mod test_helpers;
 pub use cache::Cache;
 pub use db::ResultsDB;
 pub use types::*;
-pub use utils::{generate_run_id, get_qipu_version};
+pub use utils::generate_run_id;
 
 #[cfg(test)]
 mod tests {

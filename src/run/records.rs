@@ -8,7 +8,6 @@ pub fn build_result_record(
     s: &Scenario,
     tool: &str,
     model: &str,
-    qipu_version: &str,
     cache_key: &CacheKey,
     metrics: EvaluationMetrics,
     outcome: String,
@@ -24,7 +23,6 @@ pub fn build_result_record(
         scenario_hash: cache_key.scenario_hash.clone(),
         tool: tool.to_string(),
         model: model.to_string(),
-        qipu_commit: qipu_version.to_string(),
         timestamp: chrono::Utc::now(),
         duration_secs,
         cost_usd: cost,
@@ -63,7 +61,6 @@ pub fn handle_dry_run(
     s: &Scenario,
     tool: &str,
     model: &str,
-    qipu_version: &str,
     cache_key: &CacheKey,
 ) -> anyhow::Result<ResultRecord> {
     use crate::results::{EfficiencyMetricsRecord, EvaluationMetricsRecord};
@@ -76,7 +73,6 @@ pub fn handle_dry_run(
         scenario_hash: cache_key.scenario_hash.clone(),
         tool: tool.to_string(),
         model: model.to_string(),
-        qipu_commit: qipu_version.to_string(),
         timestamp: chrono::Utc::now(),
         duration_secs: 0.0,
         cost_usd: None,

@@ -38,7 +38,6 @@ pub fn create_test_record_with_tool(id: &str, scenario_id: &str, tool: &str) -> 
         scenario_hash: "hash123".to_string(),
         tool: tool.to_string(),
         model: "gpt-4o".to_string(),
-        qipu_commit: "abc123".to_string(),
         timestamp: Utc::now(),
         duration_secs: 45.5,
         cost_usd: Some(0.01),

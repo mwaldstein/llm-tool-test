@@ -19,15 +19,13 @@ pub struct CacheKey {
     pub tool: String,
     /// Model name
     pub model: String,
-    /// Qipu version/commit
-    pub qipu_version: String,
 }
 
 impl CacheKey {
     /// Compute a cache key from run parameters.
     ///
     /// Hashes the scenario YAML, prompt, and prime output using SHA256,
-    /// and combines with tool, model, and version information.
+    /// and combines with tool and model information.
     ///
     /// # Arguments
     ///
@@ -36,7 +34,6 @@ impl CacheKey {
     /// * `prime_output` - Prime output text
     /// * `tool` - Tool name
     /// * `model` - Model name
-    /// * `qipu_version` - Qipu version string
     ///
     /// # Returns
     ///
@@ -47,7 +44,6 @@ impl CacheKey {
         prime_output: &str,
         tool: &str,
         model: &str,
-        qipu_version: &str,
     ) -> Self {
         let mut hasher = Sha256::new();
         hasher.update(scenario_yaml.as_bytes());
@@ -67,7 +63,6 @@ impl CacheKey {
             prime_output_hash,
             tool: tool.to_string(),
             model: model.to_string(),
-            qipu_version: qipu_version.to_string(),
         }
     }
 
@@ -82,13 +77,8 @@ impl CacheKey {
         // Sanitize model name to avoid path separator issues in filenames
         let safe_model = self.model.replace(['/', '\\'], "_");
         format!(
-            "{}_{}_{}_{}_{}_{}",
-            self.scenario_hash,
-            self.prompt_hash,
-            self.prime_output_hash,
-            self.tool,
-            safe_model,
-            self.qipu_version
+            "{}_{}_{}_{}_{}",
+            self.scenario_hash, self.prompt_hash, self.prime_output_hash, self.tool, safe_model,
         )
     }
 }
