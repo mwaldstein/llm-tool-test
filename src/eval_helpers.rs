@@ -2,20 +2,38 @@ use anyhow::{Context, Result};
 use std::path::Path;
 
 /// Checks if the transcript has no errors.
-pub fn no_transcript_errors(env_root: &Path) -> Result<bool> {
+pub fn no_transcript_errors(
+    env_root: &Path,
+    target_binary: &str,
+    command_pattern: Option<&str>,
+) -> Result<bool> {
     let transcript_path = env_root.join("transcript.raw.txt");
     let content = std::fs::read_to_string(&transcript_path)
         .context("Failed to read transcript file (missing or unreadable)")?;
-    let metrics = crate::transcript::TranscriptAnalyzer::analyze_with_exit_codes(&content);
+    let metrics = crate::transcript::TranscriptAnalyzer::analyze_with_exit_codes_for_target(
+        &content,
+        target_binary,
+        command_pattern,
+    );
     Ok(metrics.error_count == 0)
 }
 
 /// Computes efficiency metrics from the transcript.
-pub fn compute_efficiency_metrics(env_root: &Path) -> Result<crate::transcript::EfficiencyMetrics> {
+pub fn compute_efficiency_metrics(
+    env_root: &Path,
+    target_binary: &str,
+    command_pattern: Option<&str>,
+) -> Result<crate::transcript::EfficiencyMetrics> {
     let transcript_path = env_root.join("transcript.raw.txt");
     let content = std::fs::read_to_string(&transcript_path)
         .context("Failed to read transcript file for efficiency metrics")?;
-    Ok(crate::transcript::TranscriptAnalyzer::analyze_with_exit_codes(&content))
+    Ok(
+        crate::transcript::TranscriptAnalyzer::analyze_with_exit_codes_for_target(
+            &content,
+            target_binary,
+            command_pattern,
+        ),
+    )
 }
 
 /// Computes a composite score from judge score, gates, and efficiency metrics.

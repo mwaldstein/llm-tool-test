@@ -130,12 +130,15 @@ Add the `target` config to scenarios so the framework knows what tool is being t
 
 ### 2.2 Wire target config through transcript analyzer
 
-**Files:**
-- `src/transcript/analyzer.rs` — Change `TranscriptAnalyzer` methods to accept an optional `command_pattern: &str` parameter instead of hardcoding the regex. Default to matching the target binary name if no pattern is provided.
-- `src/eval_helpers.rs` — Update `compute_efficiency_metrics()` to accept and pass through the command pattern.
-- `src/evaluation.rs` — Pass `scenario.target.command_pattern` to the analyzer.
+**Status:** ✅ Complete
 
-**Verify:** `cargo build`, `cargo test`. Analyzer tests should pass with the parameterized pattern.
+**Files:**
+- ✅ `src/transcript/analyzer.rs` — Added target-aware analyzer entry points and `resolve_command_pattern()` so command extraction uses `target.command_pattern` when provided and defaults to a regex built from `target.binary`.
+- ✅ `src/eval_helpers.rs` — Updated `compute_efficiency_metrics()` and `no_transcript_errors()` to accept `target_binary` and optional `command_pattern`, then pass both to the analyzer.
+- ✅ `src/evaluation.rs` — Threaded `scenario.target.binary` and `scenario.target.command_pattern` through gate evaluation and efficiency computation.
+- ✅ `src/transcript/tests/analyzer.rs` — Added tests for default target-binary matching and custom no-capture patterns.
+
+**Verify:** ✅ `cargo build` — no compile errors. ✅ `cargo test` — all tests pass (151 total).
 
 ### 2.3 Wire target env vars through execution
 

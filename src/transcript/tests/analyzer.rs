@@ -233,3 +233,26 @@ fn test_extract_commands_with_hypothetical_command_examples() {
     assert_eq!(commands[1].command, "list");
     assert_eq!(commands[2].command, "deploy");
 }
+
+#[test]
+fn test_analyze_with_target_binary_default_pattern() {
+    let transcript = "mytool create\nmytool list\nothertool list";
+    let metrics =
+        TranscriptAnalyzer::analyze_with_exit_codes_for_target(transcript, "mytool", None);
+
+    assert_eq!(metrics.total_commands, 2);
+    assert_eq!(metrics.unique_commands, 2);
+}
+
+#[test]
+fn test_analyze_with_target_custom_pattern_no_capture_group() {
+    let transcript = "mytool create\nmytool list\nmytool --help\nothertool list";
+    let metrics = TranscriptAnalyzer::analyze_with_exit_codes_for_target(
+        transcript,
+        "mytool",
+        Some("mytool"),
+    );
+
+    assert_eq!(metrics.total_commands, 3);
+    assert_eq!(metrics.help_invocations, 1);
+}

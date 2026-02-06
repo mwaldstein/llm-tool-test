@@ -27,11 +27,21 @@ macro_rules! eval_gate {
 }
 
 pub trait GateEvaluator {
-    fn evaluate(&self, env_root: &Path) -> GateResult;
+    fn evaluate(
+        &self,
+        env_root: &Path,
+        target_binary: &str,
+        command_pattern: Option<&str>,
+    ) -> GateResult;
 }
 
 impl GateEvaluator for Gate {
-    fn evaluate(&self, env_root: &Path) -> GateResult {
+    fn evaluate(
+        &self,
+        env_root: &Path,
+        target_binary: &str,
+        command_pattern: Option<&str>,
+    ) -> GateResult {
         match self {
             Gate::MinNotes { count } => eval_min_notes(*count, env_root),
             Gate::MinLinks { count } => eval_min_links(*count, env_root),
@@ -48,7 +58,9 @@ impl GateEvaluator for Gate {
             }
             Gate::CommandSucceeds { command } => eval_command_succeeds(command, env_root),
             Gate::DoctorPasses => eval_doctor_passes(env_root),
-            Gate::NoTranscriptErrors => eval_no_transcript_errors(env_root),
+            Gate::NoTranscriptErrors => {
+                eval_no_transcript_errors(env_root, target_binary, command_pattern)
+            }
         }
     }
 }
@@ -172,10 +184,14 @@ fn eval_doctor_passes(_env_root: &Path) -> GateResult {
     }
 }
 
-fn eval_no_transcript_errors(env_root: &Path) -> GateResult {
+fn eval_no_transcript_errors(
+    env_root: &Path,
+    target_binary: &str,
+    command_pattern: Option<&str>,
+) -> GateResult {
     eval_gate!(
         "NoTranscriptErrors",
-        crate::eval_helpers::no_transcript_errors(env_root),
+        crate::eval_helpers::no_transcript_errors(env_root, target_binary, command_pattern),
         |no_errors| (
             no_errors,
             format!("Transcript has no command errors: {}", no_errors)
@@ -234,12 +250,17 @@ pub struct GateResult {
     pub message: String,
 }
 
-fn evaluate_gates(gates: &[Gate], env_root: &Path) -> (Vec<GateResult>, usize) {
+fn evaluate_gates(
+    gates: &[Gate],
+    env_root: &Path,
+    target_binary: &str,
+    command_pattern: Option<&str>,
+) -> (Vec<GateResult>, usize) {
     let mut details = Vec::new();
     let mut gates_passed = 0;
 
     for gate in gates {
-        let result = gate.evaluate(env_root);
+        let result = gate.evaluate(env_root, target_binary, command_pattern);
 
         if result.passed {
             println!("Gate {} passed: {}", result.gate_type, result.message);
@@ -333,16 +354,21 @@ fn maybe_run_judge(
     Ok((None, None))
 }
 
-fn compute_efficiency_or_default(env_root: &Path) -> EfficiencyMetrics {
-    crate::eval_helpers::compute_efficiency_metrics(env_root).unwrap_or(EfficiencyMetrics {
-        total_commands: 0,
-        unique_commands: 0,
-        error_count: 0,
-        retry_count: 0,
-        help_invocations: 0,
-        first_try_success_rate: 0.0,
-        iteration_ratio: 0.0,
-    })
+fn compute_efficiency_or_default(
+    env_root: &Path,
+    target_binary: &str,
+    command_pattern: Option<&str>,
+) -> EfficiencyMetrics {
+    crate::eval_helpers::compute_efficiency_metrics(env_root, target_binary, command_pattern)
+        .unwrap_or(EfficiencyMetrics {
+            total_commands: 0,
+            unique_commands: 0,
+            error_count: 0,
+            retry_count: 0,
+            help_invocations: 0,
+            first_try_success_rate: 0.0,
+            iteration_ratio: 0.0,
+        })
 }
 
 fn build_metrics(
@@ -353,7 +379,11 @@ fn build_metrics(
     judge_score: Option<f64>,
     judge_response: Option<JudgeResponse>,
 ) -> EvaluationMetrics {
-    let efficiency = compute_efficiency_or_default(env_root);
+    let efficiency = compute_efficiency_or_default(
+        env_root,
+        &scenario.target.binary,
+        scenario.target.command_pattern.as_deref(),
+    );
     let composite_score = crate::eval_helpers::compute_composite_score(
         judge_score,
         gates_passed,
@@ -375,7 +405,12 @@ fn build_metrics(
 pub fn evaluate(scenario: &Scenario, env_root: &Path, no_judge: bool) -> Result<EvaluationMetrics> {
     println!("Evaluating results for scenario: {}", scenario.name);
 
-    let (details, gates_passed) = evaluate_gates(&scenario.evaluation.gates, env_root);
+    let (details, gates_passed) = evaluate_gates(
+        &scenario.evaluation.gates,
+        env_root,
+        &scenario.target.binary,
+        scenario.target.command_pattern.as_deref(),
+    );
     let (judge_score, judge_response) = maybe_run_judge(scenario, env_root, no_judge)?;
     let metrics = build_metrics(
         scenario,

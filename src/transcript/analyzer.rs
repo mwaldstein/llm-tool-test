@@ -11,14 +11,45 @@ impl TranscriptAnalyzer {
         Self::analyze_with_pattern(transcript, DEFAULT_COMMAND_PATTERN)
     }
 
+    #[allow(dead_code)]
+    pub fn analyze_for_target(
+        transcript: &str,
+        target_binary: &str,
+        command_pattern: Option<&str>,
+    ) -> EfficiencyMetrics {
+        let pattern = Self::resolve_command_pattern(target_binary, command_pattern);
+        Self::analyze_with_pattern(transcript, &pattern)
+    }
+
+    #[allow(dead_code)]
     pub fn analyze_with_exit_codes(transcript: &str) -> EfficiencyMetrics {
         let commands = Self::extract_commands_with_pattern(transcript, DEFAULT_COMMAND_PATTERN);
+        Self::analyze_with_events(transcript, Some(commands))
+    }
+
+    pub fn analyze_with_exit_codes_for_target(
+        transcript: &str,
+        target_binary: &str,
+        command_pattern: Option<&str>,
+    ) -> EfficiencyMetrics {
+        let pattern = Self::resolve_command_pattern(target_binary, command_pattern);
+        let commands = Self::extract_commands_with_pattern(transcript, &pattern);
         Self::analyze_with_events(transcript, Some(commands))
     }
 
     pub fn analyze_with_pattern(transcript: &str, command_pattern: &str) -> EfficiencyMetrics {
         let commands = Self::extract_commands_with_pattern(transcript, command_pattern);
         Self::analyze_with_events(transcript, Some(commands))
+    }
+
+    pub fn resolve_command_pattern(target_binary: &str, command_pattern: Option<&str>) -> String {
+        if let Some(pattern) = command_pattern {
+            if !pattern.trim().is_empty() {
+                return pattern.to_string();
+            }
+        }
+
+        format!(r"^\s*({})\s+(--help|\S+)\b", regex::escape(target_binary))
     }
 
     pub fn analyze_with_events(
@@ -112,23 +143,25 @@ impl TranscriptAnalyzer {
 
         for (i, line) in lines.iter().enumerate() {
             if let Some(caps) = command_regex.captures(line) {
-                let Some(binary_match) = caps.get(1) else {
-                    continue;
-                };
-
-                let binary = binary_match.as_str();
-                if binary.eq_ignore_ascii_case("exit")
-                    || binary.eq_ignore_ascii_case("error")
-                    || binary.eq_ignore_ascii_case("failed")
-                {
-                    continue;
+                let binary = caps.get(1).map(|m| m.as_str().to_string());
+                if let Some(binary_name) = &binary {
+                    if binary_name.eq_ignore_ascii_case("exit")
+                        || binary_name.eq_ignore_ascii_case("error")
+                        || binary_name.eq_ignore_ascii_case("failed")
+                    {
+                        continue;
+                    }
                 }
 
-                let Some(subcommand_match) = caps.get(2) else {
-                    continue;
+                let subcommand = if let Some(subcommand_match) = caps.get(2) {
+                    subcommand_match.as_str().to_string()
+                } else if let Some(primary_capture) = caps.get(1) {
+                    primary_capture.as_str().to_string()
+                } else {
+                    let mut parts = line.split_whitespace();
+                    let _binary_part = parts.next();
+                    parts.next().unwrap_or("command").to_string()
                 };
-
-                let subcommand = subcommand_match.as_str().to_string();
                 let is_help = subcommand == "--help" || line.contains("--help");
 
                 if is_help {
