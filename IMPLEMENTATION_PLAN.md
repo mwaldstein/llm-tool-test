@@ -82,14 +82,17 @@ The `store_analysis.rs` module and `QualityMetrics` are qipu-specific (they pars
 
 ### 1.5 Remove `get_prime_output` from fixture
 
-**Files:**
-- `src/fixture.rs` — Delete `get_prime_output()` (lines 30–45). This runs `qipu prime`, which is qipu-specific.
-- `src/run/setup.rs` — Remove the call to `env.get_prime_output()` (line 27) and the `prime_output` variable.
-- `src/run/mod.rs` — Remove `prime_output` from `compute_cache_key()` call. Update `compute_cache_key` to not require it.
-- `src/run/cache.rs` — Remove `prime_output` parameter from `compute_cache_key()`.
-- `src/results/types/cache_key.rs` — Remove prime output from cache key computation.
+**Status:** ✅ Complete
 
-**Verify:** `cargo build`, `cargo test`.
+**Files:**
+- ✅ `src/fixture.rs` — Deleted `get_prime_output()` method and removed unused `Command` import.
+- ✅ `src/run/setup.rs` — Removed the call to `env.get_prime_output()` and the `prime_output` variable.
+- ✅ `src/run/mod.rs` — Removed `prime_output` from `compute_cache_key()` call.
+- ✅ `src/run/cache.rs` — Removed `prime_output` parameter from `compute_cache_key()`.
+- ✅ `src/results/types/cache_key.rs` — Removed `prime_output_hash` field and `prime_output` parameter from `CacheKey` struct and methods.
+- ✅ `src/results/types/tests.rs` — Updated all tests to remove `prime_output` references and deleted `test_cache_key_different_prime_outputs` test.
+
+**Verify:** ✅ `cargo build` — no compile errors. ✅ `cargo test` — all 148 tests pass.
 
 ### 1.6 Remove qipu-specific transcript analyzer regex
 

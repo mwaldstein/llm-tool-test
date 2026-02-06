@@ -6,33 +6,29 @@ use super::*;
 fn test_cache_key_compute_basic() {
     let scenario_yaml = "name: test\ntask:\n  prompt: test";
     let prompt = "Create a test note";
-    let prime_output = "";
     let tool = "opencode";
     let model = "gpt-4o";
 
-    let key = CacheKey::compute(scenario_yaml, prompt, prime_output, tool, model);
+    let key = CacheKey::compute(scenario_yaml, prompt, tool, model);
 
     assert_eq!(key.tool, "opencode");
     assert_eq!(key.model, "gpt-4o");
     assert!(!key.scenario_hash.is_empty());
     assert!(!key.prompt_hash.is_empty());
-    assert!(!key.prime_output_hash.is_empty());
 }
 
 #[test]
 fn test_cache_key_consistent_hashes() {
     let scenario_yaml = "name: test\ntask:\n  prompt: test";
     let prompt = "Create a test note";
-    let prime_output = "";
     let tool = "opencode";
     let model = "gpt-4o";
 
-    let key1 = CacheKey::compute(scenario_yaml, prompt, prime_output, tool, model);
-    let key2 = CacheKey::compute(scenario_yaml, prompt, prime_output, tool, model);
+    let key1 = CacheKey::compute(scenario_yaml, prompt, tool, model);
+    let key2 = CacheKey::compute(scenario_yaml, prompt, tool, model);
 
     assert_eq!(key1.scenario_hash, key2.scenario_hash);
     assert_eq!(key1.prompt_hash, key2.prompt_hash);
-    assert_eq!(key1.prime_output_hash, key2.prime_output_hash);
 }
 
 #[test]
@@ -40,16 +36,14 @@ fn test_cache_key_different_scenarios() {
     let scenario1 = "name: test1\ntask:\n  prompt: test";
     let scenario2 = "name: test2\ntask:\n  prompt: test";
     let prompt = "Create a test note";
-    let prime_output = "";
     let tool = "opencode";
     let model = "gpt-4o";
 
-    let key1 = CacheKey::compute(scenario1, prompt, prime_output, tool, model);
-    let key2 = CacheKey::compute(scenario2, prompt, prime_output, tool, model);
+    let key1 = CacheKey::compute(scenario1, prompt, tool, model);
+    let key2 = CacheKey::compute(scenario2, prompt, tool, model);
 
     assert_ne!(key1.scenario_hash, key2.scenario_hash);
     assert_eq!(key1.prompt_hash, key2.prompt_hash);
-    assert_eq!(key1.prime_output_hash, key2.prime_output_hash);
 }
 
 #[test]
@@ -57,33 +51,29 @@ fn test_cache_key_different_prompts() {
     let scenario_yaml = "name: test\ntask:\n  prompt: test";
     let prompt1 = "Create a test note";
     let prompt2 = "Create a different note";
-    let prime_output = "";
     let tool = "opencode";
     let model = "gpt-4o";
 
-    let key1 = CacheKey::compute(scenario_yaml, prompt1, prime_output, tool, model);
-    let key2 = CacheKey::compute(scenario_yaml, prompt2, prime_output, tool, model);
+    let key1 = CacheKey::compute(scenario_yaml, prompt1, tool, model);
+    let key2 = CacheKey::compute(scenario_yaml, prompt2, tool, model);
 
     assert_eq!(key1.scenario_hash, key2.scenario_hash);
     assert_ne!(key1.prompt_hash, key2.prompt_hash);
-    assert_eq!(key1.prime_output_hash, key2.prime_output_hash);
 }
 
 #[test]
 fn test_cache_key_different_tools() {
     let scenario_yaml = "name: test\ntask:\n  prompt: test";
     let prompt = "Create a test note";
-    let prime_output = "";
     let tool1 = "opencode";
     let tool2 = "claude-code";
     let model = "gpt-4o";
 
-    let key1 = CacheKey::compute(scenario_yaml, prompt, prime_output, tool1, model);
-    let key2 = CacheKey::compute(scenario_yaml, prompt, prime_output, tool2, model);
+    let key1 = CacheKey::compute(scenario_yaml, prompt, tool1, model);
+    let key2 = CacheKey::compute(scenario_yaml, prompt, tool2, model);
 
     assert_eq!(key1.scenario_hash, key2.scenario_hash);
     assert_eq!(key1.prompt_hash, key2.prompt_hash);
-    assert_eq!(key1.prime_output_hash, key2.prime_output_hash);
     assert_ne!(key1.tool, key2.tool);
 }
 
@@ -91,17 +81,15 @@ fn test_cache_key_different_tools() {
 fn test_cache_key_different_models() {
     let scenario_yaml = "name: test\ntask:\n  prompt: test";
     let prompt = "Create a test note";
-    let prime_output = "";
     let tool = "opencode";
     let model1 = "gpt-4o";
     let model2 = "claude-sonnet-4";
 
-    let key1 = CacheKey::compute(scenario_yaml, prompt, prime_output, tool, model1);
-    let key2 = CacheKey::compute(scenario_yaml, prompt, prime_output, tool, model2);
+    let key1 = CacheKey::compute(scenario_yaml, prompt, tool, model1);
+    let key2 = CacheKey::compute(scenario_yaml, prompt, tool, model2);
 
     assert_eq!(key1.scenario_hash, key2.scenario_hash);
     assert_eq!(key1.prompt_hash, key2.prompt_hash);
-    assert_eq!(key1.prime_output_hash, key2.prime_output_hash);
     assert_ne!(key1.model, key2.model);
 }
 
@@ -109,16 +97,14 @@ fn test_cache_key_different_models() {
 fn test_cache_key_as_string() {
     let scenario_yaml = "name: test\ntask:\n  prompt: test";
     let prompt = "Create a test note";
-    let prime_output = "";
     let tool = "opencode";
     let model = "gpt-4o";
 
-    let key = CacheKey::compute(scenario_yaml, prompt, prime_output, tool, model);
+    let key = CacheKey::compute(scenario_yaml, prompt, tool, model);
     let key_string = key.as_string();
 
     assert!(key_string.contains(&key.scenario_hash));
     assert!(key_string.contains(&key.prompt_hash));
-    assert!(key_string.contains(&key.prime_output_hash));
     assert!(key_string.contains(&key.tool));
     assert!(key_string.contains(&key.model));
 }
@@ -127,31 +113,13 @@ fn test_cache_key_as_string() {
 fn test_cache_key_equality() {
     let scenario_yaml = "name: test\ntask:\n  prompt: test";
     let prompt = "Create a test note";
-    let prime_output = "";
     let tool = "opencode";
     let model = "gpt-4o";
 
-    let key1 = CacheKey::compute(scenario_yaml, prompt, prime_output, tool, model);
-    let key2 = CacheKey::compute(scenario_yaml, prompt, prime_output, tool, model);
+    let key1 = CacheKey::compute(scenario_yaml, prompt, tool, model);
+    let key2 = CacheKey::compute(scenario_yaml, prompt, tool, model);
 
     assert_eq!(key1, key2);
-}
-
-#[test]
-fn test_cache_key_different_prime_outputs() {
-    let scenario_yaml = "name: test\ntask:\n  prompt: test";
-    let prompt = "Create a test note";
-    let prime_output1 = "note1\nnote2";
-    let prime_output2 = "note1\nnote2\nnote3";
-    let tool = "opencode";
-    let model = "gpt-4o";
-
-    let key1 = CacheKey::compute(scenario_yaml, prompt, prime_output1, tool, model);
-    let key2 = CacheKey::compute(scenario_yaml, prompt, prime_output2, tool, model);
-
-    assert_eq!(key1.scenario_hash, key2.scenario_hash);
-    assert_eq!(key1.prompt_hash, key2.prompt_hash);
-    assert_ne!(key1.prime_output_hash, key2.prime_output_hash);
 }
 
 #[test]

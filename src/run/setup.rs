@@ -24,8 +24,6 @@ pub fn setup_scenario_env(
 
     println!("Environment created at: {:?}", env.root);
 
-    let _prime_output = env.get_prime_output();
-
     Ok((env, scenario_yaml, prompt))
 }
 
