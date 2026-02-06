@@ -37,6 +37,7 @@ run:
     let cli_timeout = 300;
     let result = run_single_scenario(
         &scenario,
+        &fixture_file,
         "mock",
         "mock",
         false,
@@ -91,6 +92,7 @@ evaluation:
     let cli_timeout = 60;
     let result = run_single_scenario(
         &scenario,
+        &fixture_file,
         "mock",
         "mock",
         false,

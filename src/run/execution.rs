@@ -2,7 +2,9 @@ use crate::adapter::{TokenUsage, ToolAdapter};
 use crate::evaluation::EvaluationMetrics;
 use crate::fixture::TestEnv;
 use crate::scenario::Scenario;
+use crate::script_runner::ScriptRunner;
 use crate::transcript::TranscriptWriter;
+use std::path::Path;
 
 pub fn execute_tool(
     adapter: &Box<dyn ToolAdapter>,
@@ -38,7 +40,48 @@ pub fn create_adapter_and_check(tool: &str) -> anyhow::Result<Box<dyn ToolAdapte
     Ok(adapter)
 }
 
-use std::path::Path;
+fn run_post_scripts(
+    scenario: &Scenario,
+    env: &TestEnv,
+    tool: &str,
+    model: &str,
+    results_dir: &Path,
+    transcript_path: Option<&Path>,
+    writer: &TranscriptWriter,
+) -> anyhow::Result<()> {
+    if let Some(scripts) = &scenario.scripts {
+        println!("Running {} post-execution script(s)...", scripts.post.len());
+        let runner = ScriptRunner::new(
+            env.root.clone(),
+            results_dir.to_path_buf(),
+            scenario.name.clone(),
+            tool.to_string(),
+            model.to_string(),
+            transcript_path.map(|p| p.to_path_buf()),
+            Some(writer.base_dir.join("events.jsonl")),
+            scenario.target.env.clone().unwrap_or_default(),
+        );
+
+        for entry in &scripts.post {
+            let result = runner.run(&entry.command, entry.timeout_secs)?;
+            let event = serde_json::json!({
+                "type": "post_script",
+                "command": entry.command,
+                "exit_code": result.exit_code,
+                "timed_out": result.timed_out,
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+            });
+            writer.append_event(&event)?;
+
+            if result.exit_code != 0 {
+                eprintln!("Warning: post script failed: {}", entry.command);
+            }
+        }
+    }
+
+    Ok(())
+}
 
 pub fn run_evaluation_flow(
     adapter: &Box<dyn ToolAdapter>,
@@ -50,6 +93,7 @@ pub fn run_evaluation_flow(
     no_judge: bool,
     writer: &TranscriptWriter,
     transcript_dir: &Path,
+    results_dir: &Path,
 ) -> anyhow::Result<(
     String,
     i32,
@@ -83,8 +127,20 @@ pub fn run_evaluation_flow(
     };
     writer.append_event(&event)?;
 
+    // Run post-execution scripts after transcript writing, before evaluation
+    let transcript_path = transcript_dir.join("transcript.raw.txt");
+    run_post_scripts(
+        s,
+        env,
+        tool,
+        model,
+        results_dir,
+        Some(&transcript_path),
+        writer,
+    )?;
+
     println!("Running evaluation...");
-    let metrics = crate::evaluation::evaluate(s, transcript_dir, no_judge)?;
+    let metrics = crate::evaluation::evaluate(s, &env.root, no_judge)?;
     println!("Evaluation metrics: {:?}", metrics);
 
     Ok((output, exit_code, cost, token_usage, duration, metrics))

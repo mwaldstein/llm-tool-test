@@ -12,6 +12,7 @@ use crate::scenario::Scenario;
 #[allow(clippy::too_many_arguments)]
 pub fn run_single_scenario(
     s: &Scenario,
+    scenario_path: &std::path::Path,
     tool: &str,
     model: &str,
     dry_run: bool,
@@ -37,7 +38,7 @@ pub fn run_single_scenario(
     let results_dir = crate::run::utils::get_results_dir(tool, model, &s.name);
     std::fs::create_dir_all(&results_dir)?;
 
-    let (env, scenario_yaml, prompt) = setup_scenario_env(s, &results_dir)?;
+    let (env, scenario_yaml, prompt) = setup_scenario_env(s, scenario_path, &results_dir)?;
     let cache_key = compute_cache_key(&scenario_yaml, &prompt, tool, model);
 
     if !no_cache {
@@ -67,6 +68,7 @@ pub fn run_single_scenario(
         no_judge,
         &writer,
         &transcript_dir,
+        &results_dir,
     )?;
 
     let outcome = determine_outcome(&metrics);

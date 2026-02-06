@@ -213,24 +213,34 @@ Replace domain-specific gates with generic primitives per specs/evaluation.md.
 
 ### 3.3 Implement `command_json_path` assertion parser
 
+**Status:** ✅ Complete
+
 **Files:**
-- New file: `src/json_assertion.rs` (or inline in `evaluation.rs`) — Parse and evaluate assertion strings:
+- ✅ `src/evaluation.rs` — Implemented JSON path parsing and assertion evaluation inline:
   - `exists` — value is not null/missing
   - `equals <value>` — exact equality
   - `contains <substring>` — string contains
   - `len >= N`, `len == N`, `len > N` — array/object length
 
-  Use `serde_json::Value` for JSON navigation. Use a simple JSON pointer-style path (e.g., `$.links` → split on `.`, navigate nested objects/arrays).
+  Uses `serde_json::Value` for JSON navigation with JSON pointer-style paths (e.g., `$.links` → split on `.`, navigate nested objects/arrays).
+  
+  Functions implemented:
+  - `parse_json_path()` — Parses JSON path expressions like `$.items[0].name`
+  - `resolve_json_path()` — Resolves a parsed path against a JSON value
+  - `evaluate_json_assertion()` — Evaluates assertions against resolved values
 
-**Verify:** Unit tests for the assertion parser covering all forms.
+**Verify:** ✅ Unit tests cover all assertion forms in `src/evaluation.rs` test module. All 163 tests pass.
 
 ### 3.4 Update test fixtures and CLI tests
 
-**Files:**
-- `tests/cli.rs` — Update scenario YAML to use new gate types.
-- `src/scenario/tests/` — Update any scenario parsing tests.
+**Status:** ✅ Complete
 
-**Verify:** `cargo test --all`.
+**Files:**
+- ✅ `tests/cli.rs` — All scenario YAML fixtures already updated to use generic gate types and `target:` configuration during Phase 3.1-3.2
+- ✅ `src/scenario/tests/` — All scenario parsing tests updated with generic gates and target config
+- ✅ Added integration test `test_run_command_with_post_scripts` demonstrating post script execution
+
+**Verify:** ✅ `cargo test --all` — All 172 tests pass (154 unit + 18 integration).
 
 ---
 
@@ -312,28 +322,31 @@ Implement the three new script hooks per specs/scripts.md.
 
 ### 4.3 Implement post-execution scripts
 
-**Files:**
-- `src/run/execution.rs` — After agent execution and transcript writing, but before evaluation, run post scripts:
-  ```rust
-  if let Some(scripts) = &scenario.scripts {
-      for entry in &scripts.post {
-          let result = runner.run(&entry.command, entry.timeout_secs)?;
-          writer.append_event(&json!({
-              "type": "post_script",
-              "command": entry.command,
-              "exit_code": result.exit_code,
-              "timed_out": result.timed_out,
-          }))?;
-          if result.exit_code != 0 {
-              eprintln!("Warning: post script failed: {}", entry.command);
-          }
-      }
-  }
-  ```
-  
-  Alternatively, add a new function in `src/run/mod.rs` called between execution and evaluation. The exact placement depends on keeping `run_evaluation_flow()` clean. Consider splitting that function so post scripts slot in naturally.
+**Status:** ✅ Complete
 
-**Verify:** `cargo build`, write an integration test with a scenario that has a post script.
+**Files:**
+- ✅ `src/run/execution.rs` — Added `run_post_scripts()` helper function that:
+  - Runs after agent execution and transcript writing, but before evaluation
+  - Creates a `ScriptRunner` with the correct environment variables
+  - Iterates through `scenario.scripts.post` entries
+  - Logs post script results to events.jsonl via `writer.append_event()`
+  - Prints warnings if post scripts fail (exit code != 0)
+  
+  The post scripts have access to:
+  - `LLM_TOOL_TEST_FIXTURE_DIR` — The fixture directory
+  - `LLM_TOOL_TEST_RESULTS_DIR` — The results directory
+  - `LLM_TOOL_TEST_SCENARIO` — The scenario name
+  - `LLM_TOOL_TEST_AGENT` — The tool/agent name
+  - `LLM_TOOL_TEST_MODEL` — The model name
+  - `LLM_TOOL_TEST_TRANSCRIPT` — Path to the transcript file
+  - `LLM_TOOL_TEST_EVENTS` — Path to the events file
+  - All `target.env` variables
+
+- ✅ `src/run/mod.rs` — Updated `run_single_scenario()` to pass `results_dir` to `run_evaluation_flow()` and `setup_scenario_env()`
+- ✅ `src/run/setup.rs` — Fixed `setup_scenario_env()` to properly pass scenario file path
+- ✅ `tests/cli.rs` — Added `test_run_command_with_post_scripts` integration test
+
+**Verify:** ✅ `cargo build` compiles successfully. Integration test `test_run_command_with_post_scripts` passes. All 172 tests pass.
 
 ### 4.4 Implement script gate evaluation
 

@@ -319,6 +319,8 @@ evaluation:
             "run",
             "--scenario",
             "fixtures/qipu/model_test.yaml",
+            "--tool",
+            "mock",
             "--model",
             "test-model",
         ])
@@ -506,4 +508,95 @@ fn test_clean_command_invalid_duration() {
         .env("LLM_TOOL_TEST_ENABLED", "1")
         .assert()
         .failure();
+}
+
+// Helper function to recursively find a file in a directory
+fn find_file_recursive(dir: &std::path::Path, filename: &str) -> Option<std::path::PathBuf> {
+    if let Ok(entries) = fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                if let Some(found) = find_file_recursive(&path, filename) {
+                    return Some(found);
+                }
+            } else if path.file_name().map(|n| n == filename).unwrap_or(false) {
+                return Some(path);
+            }
+        }
+    }
+    None
+}
+
+#[test]
+fn test_run_command_with_post_scripts() {
+    let dir = tempdir().unwrap();
+
+    let fixtures_dir = dir.path().join("fixtures");
+    let qipu_dir = fixtures_dir.join("qipu");
+    fs::create_dir_all(&qipu_dir).unwrap();
+
+    // Create a scenario with post-execution scripts
+    // Using a simpler approach - create a file in the fixture directory
+    let scenario_content = r#"
+name: post_script_test
+description: "Post script execution test"
+template_folder: qipu
+target:
+  binary: qipu
+task:
+  prompt: "Test"
+scripts:
+  post:
+    - command: "echo 'post_script_output' > post_script_marker.txt"
+      timeout_secs: 10
+evaluation:
+  gates:
+    - type: file_contains
+      path: "post_script_marker.txt"
+      substring: "post_script_output"
+"#;
+    fs::write(qipu_dir.join("post_script_test.yaml"), scenario_content).unwrap();
+
+    // Create required template folder structure
+    let templates_dir = dir.path().join("llm-test-fixtures/templates/qipu");
+    fs::create_dir_all(&templates_dir).unwrap();
+    fs::write(templates_dir.join("test.txt"), "test content").unwrap();
+
+    // Copy scenario to the expected location for setup_scenario_env
+    let llm_fixtures_dir = dir.path().join("llm-test-fixtures");
+    fs::write(
+        llm_fixtures_dir.join("post_script_test.yaml"),
+        scenario_content,
+    )
+    .unwrap();
+
+    llm_tool_test()
+        .current_dir(dir.path())
+        .args([
+            "run",
+            "--scenario",
+            "fixtures/qipu/post_script_test.yaml",
+            "--tool",
+            "mock",
+        ])
+        .env("LLM_TOOL_TEST_ENABLED", "1")
+        .assert()
+        .success();
+
+    // Check that the post script created the marker file in the fixture directory
+    // The fixture directory is within the temp dir
+    // Actually, the marker file will be in the fixture subdirectory within the results
+    // Let's search for it
+    let found_file = find_file_recursive(dir.path(), "post_script_marker.txt");
+
+    assert!(
+        found_file.is_some(),
+        "Post script should have created the marker file somewhere in {:?}",
+        dir.path()
+    );
+
+    if let Some(ref path) = found_file {
+        let content = fs::read_to_string(path).unwrap();
+        assert!(content.contains("post_script_output"));
+    }
 }

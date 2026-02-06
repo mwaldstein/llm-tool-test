@@ -1,18 +1,15 @@
 use crate::fixture::TestEnv;
 use crate::scenario::{Scenario, Setup};
 use crate::transcript::TranscriptWriter;
-use crate::utils::resolve_fixtures_path;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
 pub fn setup_scenario_env(
     s: &Scenario,
+    scenario_path: &std::path::Path,
     results_dir: &PathBuf,
 ) -> anyhow::Result<(TestEnv, String, String)> {
-    let fixtures_path = resolve_fixtures_path("");
-    let fixtures_path_str = fixtures_path.to_str().unwrap_or("llm-test-fixtures");
-    let scenario_path = format!("{}/{}.yaml", fixtures_path_str, s.name);
-    let scenario_yaml = std::fs::read_to_string(&scenario_path)?;
+    let scenario_yaml = std::fs::read_to_string(scenario_path)?;
     let prompt = s.task.prompt.clone();
 
     println!(

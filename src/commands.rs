@@ -139,6 +139,7 @@ pub fn handle_run_command(
 
             let result = run::run_single_scenario(
                 &s,
+                &path,
                 &config.tool,
                 &config.model,
                 exec_config.dry_run,
