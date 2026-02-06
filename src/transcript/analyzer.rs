@@ -3,45 +3,34 @@ use regex::Regex;
 
 pub struct TranscriptAnalyzer;
 
+const DEFAULT_COMMAND_PATTERN: &str = r"^\s*([a-z][a-z0-9_.-]*)\s+(--help|[a-z][a-z0-9_-]*)\b";
+
 impl TranscriptAnalyzer {
     #[allow(dead_code)]
     pub fn analyze(transcript: &str) -> EfficiencyMetrics {
-        Self::analyze_with_events(transcript, None)
+        Self::analyze_with_pattern(transcript, DEFAULT_COMMAND_PATTERN)
     }
 
     pub fn analyze_with_exit_codes(transcript: &str) -> EfficiencyMetrics {
-        let commands = Self::extract_commands_with_exit_codes(transcript);
+        let commands = Self::extract_commands_with_pattern(transcript, DEFAULT_COMMAND_PATTERN);
+        Self::analyze_with_events(transcript, Some(commands))
+    }
+
+    pub fn analyze_with_pattern(transcript: &str, command_pattern: &str) -> EfficiencyMetrics {
+        let commands = Self::extract_commands_with_pattern(transcript, command_pattern);
         Self::analyze_with_events(transcript, Some(commands))
     }
 
     pub fn analyze_with_events(
-        transcript: &str,
+        _transcript: &str,
         events: Option<Vec<CommandEvent>>,
     ) -> EfficiencyMetrics {
-        let command_regex = Regex::new(r"qipu\s+(\S+)").unwrap();
-        let lines: Vec<&str> = transcript.lines().collect();
-
         let mut commands: Vec<(String, bool)> = Vec::new();
 
         if let Some(command_events) = events {
             for event in command_events {
                 let is_error = event.exit_code.map(|code| code != 0).unwrap_or(false);
                 commands.push((event.command, is_error));
-            }
-        } else {
-            for (i, line) in lines.iter().enumerate() {
-                if let Some(caps) = command_regex.captures(line) {
-                    let subcommand = caps[1].to_string();
-                    let is_help = subcommand == "--help" || line.contains("--help");
-                    let is_error =
-                        !is_help && i + 1 < lines.len() && Self::is_error_line(lines[i + 1]);
-
-                    if is_help {
-                        commands.push(("help".to_string(), false));
-                    } else {
-                        commands.push((subcommand, is_error));
-                    }
-                }
             }
         }
 
@@ -96,8 +85,26 @@ impl TranscriptAnalyzer {
             || line_lower.contains("non-zero")
     }
 
+    #[allow(dead_code)]
     pub(crate) fn extract_commands_with_exit_codes(transcript: &str) -> Vec<CommandEvent> {
-        let command_regex = Regex::new(r"qipu\s+(\S+)").unwrap();
+        Self::extract_commands_with_pattern(transcript, DEFAULT_COMMAND_PATTERN)
+    }
+
+    /// Extract command events from transcript lines using the provided regex pattern.
+    ///
+    /// The pattern must capture the binary in group 1 and subcommand in group 2.
+    ///
+    /// Hypothetical command examples this supports:
+    /// - `taskmgr create --title "Ship v1"`
+    /// - `notes-cli list --format json`
+    /// - `acme-tool deploy --env staging`
+    pub(crate) fn extract_commands_with_pattern(
+        transcript: &str,
+        command_pattern: &str,
+    ) -> Vec<CommandEvent> {
+        let Ok(command_regex) = Regex::new(command_pattern) else {
+            return Vec::new();
+        };
         let exit_code_regex = Regex::new(r"(?i)exit\s+(?:code|status):?\s*(\d+)").unwrap();
 
         let lines: Vec<&str> = transcript.lines().collect();
@@ -105,7 +112,23 @@ impl TranscriptAnalyzer {
 
         for (i, line) in lines.iter().enumerate() {
             if let Some(caps) = command_regex.captures(line) {
-                let subcommand = caps[1].to_string();
+                let Some(binary_match) = caps.get(1) else {
+                    continue;
+                };
+
+                let binary = binary_match.as_str();
+                if binary.eq_ignore_ascii_case("exit")
+                    || binary.eq_ignore_ascii_case("error")
+                    || binary.eq_ignore_ascii_case("failed")
+                {
+                    continue;
+                }
+
+                let Some(subcommand_match) = caps.get(2) else {
+                    continue;
+                };
+
+                let subcommand = subcommand_match.as_str().to_string();
                 let is_help = subcommand == "--help" || line.contains("--help");
 
                 if is_help {

@@ -96,11 +96,14 @@ The `store_analysis.rs` module and `QualityMetrics` are qipu-specific (they pars
 
 ### 1.6 Remove qipu-specific transcript analyzer regex
 
-**Files:**
-- `src/transcript/analyzer.rs` — The hardcoded `Regex::new(r"qipu\s+(\S+)")` needs to become configurable. For now, change it to accept a pattern parameter or make it a no-op that returns empty metrics if no pattern is configured. This will be properly addressed when the scenario's `target.command_pattern` is wired through in Phase 2.
-- `src/transcript/tests/analyzer.rs` — Update test transcript strings from `"qipu create ..."` to a generic placeholder, or parameterize them.
+**Status:** ✅ Complete
 
-**Verify:** `cargo build`, `cargo test`.
+**Files:**
+- ✅ `src/transcript/analyzer.rs` — Replaced hardcoded `qipu` regex with a generic default pattern and added pattern-aware methods (`analyze_with_pattern`, `extract_commands_with_pattern`). Added invalid-pattern safety and filtering for non-command status lines.
+- ✅ `src/transcript/analyzer.rs` — Documented several hypothetical command examples in analyzer docs: `taskmgr create`, `notes-cli list`, and `acme-tool deploy`.
+- ✅ `src/transcript/tests/analyzer.rs` — Replaced qipu-specific transcript examples with generic command examples and added a dedicated test that validates multiple hypothetical command styles.
+
+**Verify:** ✅ `cargo build` — no compile errors. ✅ `cargo test` — all 149 tests pass.
 
 ---
 
