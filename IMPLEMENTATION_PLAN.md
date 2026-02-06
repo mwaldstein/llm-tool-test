@@ -153,12 +153,14 @@ Add the `target` config to scenarios so the framework knows what tool is being t
 
 ### 2.4 Update test fixtures
 
-**Files:**
-- `tests/cli.rs` — Update inline scenario YAML in tests to include `target:` section.
-- `src/run/tests.rs` — Update test scenario YAML.
-- Any YAML files in `fixtures/` or `llm-test-fixtures/` — Add `target:` config.
+**Status:** ✅ Complete
 
-**Verify:** `cargo test`.
+**Files:**
+- ✅ `tests/cli.rs` — Verified all inline scenario YAML fixtures include a `target:` section.
+- ✅ `src/run/tests.rs` — Verified test scenario YAML fixtures include a `target:` section.
+- ✅ `fixtures/` and `llm-test-fixtures/` — No tracked YAML fixture files currently present that require updates.
+
+**Verify:** ✅ `cargo test` — all tests pass (152 total).
 
 ---
 
