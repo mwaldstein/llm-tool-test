@@ -632,3 +632,27 @@ No new crate dependencies needed. Existing dependencies cover all requirements:
 | 6 | Cleanup | Small — dead code, formatting, final tests |
 
 Phases 1–2 can be done together as a single pass. Phase 3 and Phase 4 are independent of each other and could be parallelized if desired, though Phase 4's script gate depends on Phase 3's gate enum. Phase 5 (docs) should be done after Phases 3–4 so the documentation reflects the final implementation.
+
+---
+
+## ✅ Implementation Complete
+
+All phases have been successfully implemented and verified.
+
+**Final Verification:**
+- `cargo build` - ✅ No compile errors
+- `cargo test` - ✅ All 182 tests pass (164 unit + 18 integration)
+- `cargo clippy -- -D warnings` - ✅ No warnings introduced by this work
+- Working tree: Clean
+- Commits ahead of origin/master: 23
+
+**Summary of Changes:**
+- Removed qipu-specific code and snapshot mechanism
+- Added target tool configuration to scenarios
+- Implemented 9 generic gate types (command_* gates, file_* gates, no_transcript_errors, script)
+- Implemented 3 script hooks (post scripts, script gates, custom evaluators)
+- Added ScriptRunner utility with timeout support
+- Updated all documentation (README, AGENTS.md, example scenarios)
+- Created example_basic fixture demonstrating the framework
+
+The framework is now fully tool-agnostic and ready for testing any CLI tool.
