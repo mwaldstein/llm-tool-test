@@ -113,23 +113,20 @@ Add the `target` config to scenarios so the framework knows what tool is being t
 
 ### 2.1 Add target config to scenario types
 
-**Files:**
-- `src/scenario/types.rs` — Add a `TargetConfig` struct:
-  ```rust
-  #[derive(Debug, Clone, Serialize, Deserialize)]
-  pub struct TargetConfig {
-      pub binary: String,
-      #[serde(default)]
-      pub command_pattern: Option<String>,
-      #[serde(default)]
-      pub health_check: Option<String>,
-      #[serde(default)]
-      pub env: Option<HashMap<String, String>>,
-  }
-  ```
-  Add `pub target: TargetConfig` to the `Scenario` struct.
+**Status:** ✅ Complete
 
-**Verify:** `cargo build`. Existing scenario YAML files will need a `target:` section or tests will fail on deserialization. Update test YAML fixtures.
+**Files:**
+- ✅ `src/scenario/types.rs` — Added `TargetConfig` with `binary`, optional `command_pattern`, optional `health_check`, and optional `env`. Added `target: TargetConfig` to `Scenario`.
+- ✅ Updated YAML fixtures in tests to include `target:` section:
+  - `src/scenario/tests/basic.rs`
+  - `src/scenario/tests/gates.rs`
+  - `src/scenario/tests/setup.rs`
+  - `src/scenario/tests/run_config.rs`
+  - `src/run/tests.rs`
+  - `src/adapter/mock_test.rs`
+  - `tests/cli.rs`
+
+**Verify:** ✅ `cargo build` — no compile errors. ✅ `cargo test` — all tests pass.
 
 ### 2.2 Wire target config through transcript analyzer
 

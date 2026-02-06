@@ -6,6 +6,8 @@ fn test_load_scenario_without_tool_matrix() {
 name: test
 description: "Test"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test prompt"
 evaluation:
@@ -24,6 +26,8 @@ fn test_load_scenario_with_tool_matrix() {
 name: test
 description: "Test"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test prompt"
 evaluation:
@@ -54,6 +58,8 @@ fn test_load_scenario_with_empty_models() {
 name: test
 description: "Test"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test prompt"
 evaluation:
@@ -83,6 +89,8 @@ fn test_load_scenario_with_tier() {
 name: test
 description: "Test"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test prompt"
 evaluation:
@@ -103,6 +111,8 @@ fn test_default_tier() {
 name: test
 description: "Test"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test prompt"
 evaluation:
@@ -121,6 +131,8 @@ fn test_tags_field() {
 name: test
 description: "Test"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test prompt"
 evaluation:
@@ -140,6 +152,8 @@ fn test_complete_scenario() {
 name: capture_article_basic
 description: "Capture article ideas as linked notes"
 template_folder: qipu
+target:
+  binary: qipu
 tags: [capture, links, retrieval]
 task:
   prompt: "Capture key ideas from this article"

@@ -6,6 +6,8 @@ fn test_note_exists_gate() {
 name: test
 description: "Test"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test prompt"
 evaluation:
@@ -28,6 +30,8 @@ fn test_link_exists_gate() {
 name: test
 description: "Test"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test prompt"
 evaluation:
@@ -60,6 +64,8 @@ fn test_tag_exists_gate() {
 name: test
 description: "Test"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test prompt"
 evaluation:
@@ -82,6 +88,8 @@ fn test_content_contains_gate() {
 name: test
 description: "Test"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test prompt"
 evaluation:
@@ -108,6 +116,8 @@ fn test_command_succeeds_gate() {
 name: test
 description: "Test"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test prompt"
 evaluation:
@@ -130,6 +140,8 @@ fn test_doctor_passes_gate() {
 name: test
 description: "Test"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test prompt"
 evaluation:
@@ -151,6 +163,8 @@ fn test_no_transcript_errors_gate() {
 name: test
 description: "Test"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test prompt"
 evaluation:

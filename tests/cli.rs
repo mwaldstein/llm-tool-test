@@ -35,6 +35,8 @@ fn test_run_command_requires_env_var() {
 name: test_basic
 description: "Basic test"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test"
 evaluation:
@@ -89,6 +91,8 @@ tier: 0
 tags:
   - test
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test"
 evaluation:
@@ -122,6 +126,8 @@ tier: 0
 tags:
   - smoke
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test"
 evaluation:
@@ -136,6 +142,8 @@ tier: 0
 tags:
   - integration
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test"
 evaluation:
@@ -170,6 +178,8 @@ fn test_run_command_dry_run() {
 name: dry_run_test
 description: "Dry run test"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test"
 evaluation:
@@ -208,6 +218,8 @@ tags:
   - smoke
   - quick
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test"
 evaluation:
@@ -220,6 +232,8 @@ name: untagged_scenario
 description: "Untagged scenario"
 tier: 0
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test"
 evaluation:
@@ -251,6 +265,8 @@ fn test_run_command_with_tool_option() {
 name: tool_test
 description: "Tool option test"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test"
 evaluation:
@@ -286,6 +302,8 @@ fn test_run_command_with_model_option() {
 name: model_test
 description: "Model option test"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test"
 evaluation:
@@ -322,6 +340,8 @@ name: tier0_scenario
 description: "Tier 0 scenario"
 tier: 0
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test"
 evaluation:
@@ -334,6 +354,8 @@ name: tier1_scenario
 description: "Tier 1 scenario"
 tier: 1
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test"
 evaluation:
@@ -365,6 +387,8 @@ fn test_run_command_with_timeout() {
 name: timeout_test
 description: "Timeout test"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test"
 evaluation:
@@ -400,6 +424,8 @@ fn test_run_command_with_no_cache() {
 name: no_cache_test
 description: "No cache test"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test"
 evaluation:
@@ -439,6 +465,8 @@ tool_matrix:
       - model1
       - model2
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test"
 evaluation:

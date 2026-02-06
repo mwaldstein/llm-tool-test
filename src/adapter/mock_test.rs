@@ -17,6 +17,8 @@ mod tests {
 name: test
 description: "Test scenario"
 template_folder: mock_template
+target:
+  binary: mock
 task:
   prompt: "Test prompt"
 evaluation:
@@ -37,6 +39,8 @@ evaluation:
 name: test
 description: "Test scenario"
 template_folder: mock_template
+target:
+  binary: mock
 task:
   prompt: "Test prompt"
 evaluation:
@@ -61,6 +65,8 @@ evaluation:
 name: test_with_gates
 description: "Test scenario with gates"
 template_folder: mock_template
+target:
+  binary: mock
 task:
   prompt: "Test prompt"
 evaluation:
@@ -87,6 +93,8 @@ evaluation:
 name: cost_test
 description: "Test cost and token usage"
 template_folder: mock_template
+target:
+  binary: mock
 task:
   prompt: "Test prompt"
 evaluation:

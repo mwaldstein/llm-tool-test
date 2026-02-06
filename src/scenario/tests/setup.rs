@@ -6,6 +6,8 @@ fn test_load_scenario_with_setup() {
 name: test
 description: "Test"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test prompt"
 evaluation:
@@ -32,6 +34,8 @@ fn test_load_scenario_without_setup() {
 name: test
 description: "Test"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test prompt"
 evaluation:
@@ -50,6 +54,8 @@ fn test_setup_commands() {
 name: test
 description: "Test"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test prompt"
 evaluation:

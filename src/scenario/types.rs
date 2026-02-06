@@ -4,6 +4,7 @@
 //! including task definitions, evaluation gates, and tool configurations.
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// A test scenario defining a complete LLM tool evaluation case.
 ///
@@ -19,6 +20,8 @@ pub struct Scenario {
     pub description: String,
     /// Path to the template folder containing initial state
     pub template_folder: String,
+    /// Configuration for the tool being evaluated
+    pub target: TargetConfig,
     /// The task definition with prompt
     pub task: Task,
     /// Evaluation configuration with gates
@@ -38,6 +41,22 @@ pub struct Scenario {
     /// Optional runtime configuration
     #[serde(default)]
     pub run: Option<RunConfig>,
+}
+
+/// Target tool configuration for a scenario.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TargetConfig {
+    /// Binary name for the tool under test
+    pub binary: String,
+    /// Optional regex pattern for matching commands in transcripts
+    #[serde(default)]
+    pub command_pattern: Option<String>,
+    /// Optional command used to check tool health/availability
+    #[serde(default)]
+    pub health_check: Option<String>,
+    /// Optional environment variables to set when running the target
+    #[serde(default)]
+    pub env: Option<HashMap<String, String>>,
 }
 
 /// Runtime configuration for scenario execution.

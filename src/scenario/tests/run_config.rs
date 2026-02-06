@@ -6,6 +6,8 @@ fn test_run_config() {
 name: test
 description: "Test"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test prompt"
 evaluation:
@@ -30,6 +32,8 @@ fn test_run_config_optional() {
 name: test
 description: "Test"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test prompt"
 evaluation:
@@ -48,6 +52,8 @@ fn test_run_config_partial() {
 name: test
 description: "Test"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Test prompt"
 evaluation:

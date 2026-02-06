@@ -8,6 +8,8 @@ fn test_scenario_timeout_overrides_cli() {
 name: timeout_test_override
 description: "Test scenario timeout overrides CLI"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Create a note"
 evaluation:
@@ -62,6 +64,8 @@ fn test_cli_timeout_used_when_scenario_none() {
 name: timeout_test_cli
 description: "Test CLI timeout is used when scenario doesn't specify"
 template_folder: qipu
+target:
+  binary: qipu
 task:
   prompt: "Create a note"
 evaluation:
