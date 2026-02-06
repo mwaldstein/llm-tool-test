@@ -111,10 +111,13 @@ impl ToolAdapter for OpenCodeAdapter {
             .unwrap_or_else(|_| cwd.to_path_buf())
             .join(".opencode_config");
         std::fs::create_dir_all(&xdg_config_dir).ok(); // Create if doesn't exist, ignore errors
-        let env_vars: Vec<(String, String)> = vec![(
+        let mut env_vars: Vec<(String, String)> = vec![(
             "XDG_CONFIG_HOME".to_string(),
             xdg_config_dir.to_string_lossy().to_string(),
         )];
+        if let Some(target_env) = &scenario.target.env {
+            env_vars.extend(target_env.iter().map(|(k, v)| (k.clone(), v.clone())));
+        }
 
         let (output, exit_code) =
             runner.run_command_with_env("opencode", &args, cwd, timeout_secs, &env_vars)?;

@@ -142,11 +142,14 @@ Add the `target` config to scenarios so the framework knows what tool is being t
 
 ### 2.3 Wire target env vars through execution
 
-**Files:**
-- `src/run/execution.rs` — When launching the adapter, set `target.env` variables in the child process environment.
-- `src/run/setup.rs` — Set `target.env` variables when running setup commands.
+**Status:** ✅ Complete
 
-**Verify:** `cargo build`, `cargo test`.
+**Files:**
+- ✅ `src/adapter/claude_code.rs` — Updated adapter execution to pass `scenario.target.env` into the child process via `run_command_with_env()`.
+- ✅ `src/adapter/opencode.rs` — Merged `scenario.target.env` into adapter child-process env vars (alongside `XDG_CONFIG_HOME`).
+- ✅ `src/run/setup.rs` — Updated setup command execution to pass `scenario.target.env` into setup shell commands. Added unit test coverage for env var propagation.
+
+**Verify:** ✅ `cargo build` — no compile errors. ✅ `cargo test` — all tests pass.
 
 ### 2.4 Update test fixtures
 

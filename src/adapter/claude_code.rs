@@ -47,7 +47,19 @@ impl ToolAdapter for ClaudeCodeAdapter {
         let prompt_path = cwd.join("prompt.txt");
         fs::write(&prompt_path, &scenario.task.prompt)?;
 
-        let (output, exit_code) = runner.run_command("claude", &args, cwd, timeout_secs)?;
+        let target_env = scenario
+            .target
+            .env
+            .as_ref()
+            .map(|vars| {
+                vars.iter()
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect::<Vec<(String, String)>>()
+            })
+            .unwrap_or_default();
+
+        let (output, exit_code) =
+            runner.run_command_with_env("claude", &args, cwd, timeout_secs, &target_env)?;
 
         Ok((output, exit_code, None, None))
     }
