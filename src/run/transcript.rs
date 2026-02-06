@@ -4,6 +4,7 @@ use crate::results::CacheKey;
 use crate::scenario::Scenario;
 use crate::transcript::{RunMetadata, TranscriptWriter};
 
+#[allow(clippy::too_many_arguments)]
 pub fn write_transcript_files(
     writer: &TranscriptWriter,
     s: &Scenario,

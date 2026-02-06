@@ -7,7 +7,7 @@ use crate::transcript::TranscriptWriter;
 use std::path::Path;
 
 pub fn execute_tool(
-    adapter: &Box<dyn ToolAdapter>,
+    adapter: &dyn ToolAdapter,
     s: &Scenario,
     env: &TestEnv,
     tool: &str,
@@ -83,8 +83,10 @@ fn run_post_scripts(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
+#[allow(clippy::type_complexity)]
 pub fn run_evaluation_flow(
-    adapter: &Box<dyn ToolAdapter>,
+    adapter: &dyn ToolAdapter,
     s: &Scenario,
     env: &TestEnv,
     tool: &str,

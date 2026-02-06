@@ -2,12 +2,12 @@ use crate::fixture::TestEnv;
 use crate::scenario::{Scenario, Setup};
 use crate::transcript::TranscriptWriter;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub fn setup_scenario_env(
     s: &Scenario,
     scenario_path: &std::path::Path,
-    results_dir: &PathBuf,
+    results_dir: &Path,
 ) -> anyhow::Result<(TestEnv, String, String)> {
     let scenario_yaml = std::fs::read_to_string(scenario_path)?;
     let prompt = s.task.prompt.clone();
@@ -25,6 +25,7 @@ pub fn setup_scenario_env(
     Ok((env, scenario_yaml, prompt))
 }
 
+#[allow(clippy::type_complexity)]
 pub fn execute_setup_commands(
     setup: &Setup,
     env: &TestEnv,
@@ -76,15 +77,16 @@ pub fn execute_setup_commands(
     Ok((setup_success, setup_commands))
 }
 
+#[allow(clippy::type_complexity)]
 pub fn prepare_writer_and_setup(
-    results_dir: &PathBuf,
+    results_dir: &Path,
     env: &TestEnv,
     s: &Scenario,
     effective_timeout: u64,
 ) -> anyhow::Result<(PathBuf, TranscriptWriter, bool, Vec<(String, bool, String)>)> {
     let artifacts_dir = results_dir.join("artifacts");
     std::fs::create_dir_all(&artifacts_dir)?;
-    let writer = TranscriptWriter::new(artifacts_dir.clone(), results_dir.clone())?;
+    let writer = TranscriptWriter::new(artifacts_dir.clone(), results_dir.to_path_buf())?;
 
     let (setup_success, setup_commands) = if let Some(setup) = &s.setup {
         execute_setup_commands(

@@ -100,7 +100,7 @@ pub fn handle_run_command(
                 selection.tags.iter().all(|tag| s.tags.contains(tag))
             };
 
-            let tier_match = &s.tier <= &selection.tier;
+            let tier_match = s.tier <= selection.tier;
 
             if tags_match && tier_match {
                 filtered_scenarios.push((name, path));

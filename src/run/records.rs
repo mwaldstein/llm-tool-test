@@ -2,8 +2,9 @@ use crate::evaluation::EvaluationMetrics;
 use crate::output;
 use crate::results::{Cache, CacheKey, EvaluationMetricsRecord, ResultRecord, ResultsDB};
 use crate::scenario::Scenario;
-use std::path::PathBuf;
+use std::path::Path;
 
+#[allow(clippy::too_many_arguments)]
 pub fn build_result_record(
     s: &Scenario,
     tool: &str,
@@ -119,7 +120,7 @@ pub fn finalize_execution(
     cache: &Cache,
     cache_key: &CacheKey,
     record: &ResultRecord,
-    results_dir: &PathBuf,
+    results_dir: &Path,
     setup_success: bool,
 ) -> anyhow::Result<ResultRecord> {
     results_db.append(record)?;

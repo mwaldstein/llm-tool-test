@@ -50,7 +50,7 @@ impl ResultsDB {
     ///
     /// A new `ResultsDB` instance
     pub fn new(base_dir: &Path) -> Self {
-        std::fs::create_dir_all(&base_dir).ok();
+        std::fs::create_dir_all(base_dir).ok();
         Self {
             results_path: base_dir.join("results.jsonl"),
         }

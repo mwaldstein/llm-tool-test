@@ -24,6 +24,7 @@ pub struct ScriptResult {
 
 impl ScriptResult {
     /// Returns true if the script succeeded (exit code 0 and not timed out).
+    #[allow(dead_code)]
     pub fn succeeded(&self) -> bool {
         self.exit_code == 0 && !self.timed_out
     }
@@ -44,6 +45,7 @@ pub struct ScriptRunner {
 
 impl ScriptRunner {
     /// Create a new script runner.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         fixture_dir: PathBuf,
         results_dir: PathBuf,

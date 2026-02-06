@@ -56,10 +56,10 @@ pub fn run_single_scenario(
     let adapter = create_adapter_and_check(tool)?;
 
     let (transcript_dir, writer, setup_success, setup_commands) =
-        prepare_writer_and_setup(&results_dir, &env, &s, effective_timeout)?;
+        prepare_writer_and_setup(&results_dir, &env, s, effective_timeout)?;
 
     let (output, exit_code, cost, token_usage, duration, metrics) = run_evaluation_flow(
-        &adapter,
+        adapter.as_ref(),
         s,
         &env,
         tool,
