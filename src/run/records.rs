@@ -101,7 +101,7 @@ pub fn handle_dry_run(
                 first_try_success_rate: 0.0,
                 iteration_ratio: 0.0,
             },
-            composite_score: 0.0,
+            composite_score: None,
             evaluator_results: vec![],
         },
         judge_score: None,

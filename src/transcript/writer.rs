@@ -270,10 +270,12 @@ impl TranscriptWriter {
         if let Some(cost) = evaluation.cost_usd {
             content.push_str(&format!("- **Cost**: ${:.4}\n", cost));
         }
-        content.push_str(&format!(
-            "- **Composite Score**: {:.2}\n\n",
-            evaluation.composite_score
-        ));
+        if let Some(composite_score) = evaluation.composite_score {
+            content.push_str(&format!(
+                "- **Composite Score**: {:.2}\n\n",
+                composite_score
+            ));
+        }
 
         if !evaluation.judge_feedback.is_empty() {
             content.push_str("## Judge Feedback\n\n");

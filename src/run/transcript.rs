@@ -52,7 +52,7 @@ pub fn write_transcript_files(
         outcome: outcome.to_string(),
         gates_passed: metrics.gates_passed,
         gates_total: metrics.gates_total,
-        composite_score: Some(metrics.composite_score),
+        composite_score: metrics.composite_score,
         gate_details: metrics
             .details
             .iter()

@@ -71,7 +71,7 @@ pub struct EvaluationReport {
     pub gates_total: usize,
     pub duration_secs: f64,
     pub cost_usd: Option<f64>,
-    pub composite_score: f64,
+    pub composite_score: Option<f64>,
     pub judge_feedback: Vec<String>,
     pub evaluator_results: Vec<EvaluatorResultSummary>,
 }

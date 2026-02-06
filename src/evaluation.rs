@@ -590,7 +590,9 @@ pub struct EvaluationMetrics {
     pub judge_score: Option<f64>,
     pub judge_response: Option<JudgeResponse>,
     pub efficiency: EfficiencyMetrics,
-    pub composite_score: f64,
+    /// Composite score is only computed if scenario configures composite weights
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub composite_score: Option<f64>,
     /// Results from custom evaluator scripts
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub evaluator_results: Vec<EvaluatorResult>,
@@ -854,12 +856,15 @@ fn build_metrics(
         &scenario.target.binary,
         scenario.target.command_pattern.as_deref(),
     );
-    let composite_score = crate::eval_helpers::compute_composite_score(
-        judge_score,
-        gates_passed,
-        scenario.evaluation.gates.len(),
-        &efficiency,
-    );
+    let composite_score = scenario.evaluation.composite.as_ref().map(|weights| {
+        crate::eval_helpers::compute_composite_score(
+            judge_score,
+            gates_passed,
+            scenario.evaluation.gates.len(),
+            &efficiency,
+            Some(weights),
+        )
+    });
 
     EvaluationMetrics {
         gates_passed,
@@ -1272,6 +1277,7 @@ mod tests {
             evaluation: Evaluation {
                 gates: vec![],
                 judge: None,
+                composite: None,
             },
             tier: 0,
             tool_matrix: None,

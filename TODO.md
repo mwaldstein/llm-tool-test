@@ -1,163 +1,78 @@
 # LLM Tool Test - TODO List
 
-> **Note**: Tasks have been manually tracked in this TODO file.
+> **Note**: This file tracks remaining work after the implementation plan completion.
 
-## Pre-Split Tasks
+## Completed (as of latest update)
 
-- [ ] Update package metadata in `Cargo.toml`
-  - [ ] Add proper description and author
-  - [ ] Update repository URL (when created)
-  - [ ] Add appropriate keywords for crates.io
-  - [ ] Verify license field is correct
+- ✅ Remove snapshot mechanism and qipu-specific code
+- ✅ Add target tool configuration to scenarios
+- ✅ Implement generic gate system
+- ✅ Implement scripts system (post scripts, script gates, evaluators)
+- ✅ Update README with generic gates
+- ✅ Update config example with target section
+- ✅ Create AGENTS.md for the project
+- ✅ Retire SPLIT_PLAN.md
 
-- [ ] Review dependencies in `Cargo.toml`
-  - [ ] Verify all dependencies are still needed
-  - [ ] Check for any unused dependencies
-  - [ ] Update to latest versions if appropriate
+## Phase 5: Documentation (Remaining)
 
-- [ ] Generalize tool-specific code
-  - [ ] Review `src/eval_helpers.rs` - contains tool-specific functions
-    - `get_tool_path()` - hardcoded binary paths
-    - `run_tool_json()` - tool-specific command runner
-  - [ ] Consider making target CLI tool configurable
-  - [ ] Add documentation for adapting to other CLI tools
+### 5.6 Create example scenario with scripts
+- [ ] Create `fixtures/example_basic/` directory with:
+  - [ ] AGENTS.md - documentation for a simple tool
+  - [ ] README.md - scenario context
+  - [ ] scripts/ - example post scripts, script gates, evaluators
+- [ ] Create `fixtures/example_basic.yaml` scenario file
+- [ ] Use a real tool (e.g., `git` or mock CLI) for the example
 
-- [ ] Review and update configuration
-  - [ ] Update `llm-tool-test-config.example.toml` if needed
-  - [ ] Document all configuration options
-  - [ ] Consider if any tool-specific config should be generalized
+### 5.7 Update specs if implementation deviates
+- [ ] Review `specs/evaluation.md` against actual implementation
+- [ ] Review `specs/scenarios.md` against actual implementation
+- [ ] Review `specs/scripts.md` against actual implementation
+- [ ] Update any field names, default values, or edge case behaviors
 
-- [ ] Review test scenarios and fixtures
-  - [ ] Check if scenarios are tool-specific
-  - [ ] Document how to create scenarios for other tools
-  - [ ] Consider including example generic scenarios
+## Phase 6: Cleanup & Consistency
 
-## Repository Setup
+### 6.1 Remove dead code
+- [x] Run `cargo clippy` and address warnings
+  - Note: One minor warning about unused `succeeded()` method in script_runner.rs
+- [x] Delete qipu references in source code comments
+- [x] Remove `src/eval_tests_doctor.rs` (done)
+- [x] Remove `src/eval_tests_gates.rs` (done)
+- [ ] Review `src/eval_tests_score.rs` - may need updates
 
-- [ ] Initialize git repository in llm-tool-test folder
-- [ ] Create `.gitignore` file
-- [ ] Preserve git history (optional)
-  - Consider using `git filter-branch` or `git subtree split`
-- [ ] Create GitHub repository (if applicable)
-- [ ] Push initial commit
+### 6.2 Update evaluation report format
+- [ ] `src/transcript/writer.rs` - Update `write_evaluation()`:
+  - [x] Remove notes/links counts (already done in Phase 1)
+  - [ ] Make composite score conditional (only if scenario configures weights)
+  - [x] Add evaluator summaries section (done in Phase 4)
+  - [x] Update links section - remove store snapshot link (done in Phase 1)
 
-## Documentation Improvements
+### 6.3 Update `print_result_summary`
+- [ ] `src/output.rs` - Remove notes/links lines from summary output
+- [ ] Make composite score conditional (only if configured)
 
-- [ ] Write CHANGELOG.md documenting the split
-- [ ] Add CONTRIBUTING.md guide
-- [ ] Add example scenarios for different use cases
-- [ ] Document scenario format/specification
-- [ ] Add troubleshooting guide for common issues
-- [ ] Document how to add support for new LLM tools
+### 6.4 Final verification
+- [ ] `cargo build` - no errors
+- [ ] `cargo test` - all tests pass
+- [ ] `cargo clippy -- -D warnings` - no warnings (or justify any remaining)
+- [ ] `cargo fmt --check` - formatting clean
 
-### Specs
-- [x] Copy and adapt `specs/llm-user-validation.md`
-- [x] Copy and adapt `specs/distribution.md`
-  - [ ] Generalize from tool-specific to generic CLI tool testing
-  - [ ] Update architecture section (already says "separate binary")
-  - [ ] Update all command examples to generic examples
-  - [ ] Update fixture examples to be tool-agnostic
-  - [ ] Keep as implementable specification (not just documentation)
-- [ ] Consider creating new specs directory structure for llm-tool-test
-  - `specs/architecture.md` - Overall design
-  - `specs/adapters.md` - Tool adapter interface
-  - `specs/scenarios.md` - Scenario format specification
-  - `specs/evaluation.md` - Gates and judging criteria
+## Known Issues (Post-Implementation)
 
-## Testing & Validation
+### Minor
+- Unused `succeeded()` method in `ScriptResult` (script_runner.rs:27) - either use it or remove it
 
-- [ ] Verify standalone build works
-  - [ ] `cargo build`
-  - [ ] `cargo test`
-  - [ ] `cargo clippy`
-  - [ ] `cargo fmt --check`
+### Future Enhancements (not part of current plan)
+- Budget enforcement (`--max-usd` flag) - CLI accepts it but no enforcement
+- Cost estimation completion for adapters
+- HTML report generation option
+- JUnit XML output for CI
+- Parallel scenario execution
+- Scenario validation command
+- Interactive scenario debugger
 
-- [ ] Test with existing scenarios
-- [ ] Create test scenario for a different CLI tool
+## Documentation Ideas
 
-### Missing Test Coverage
-
-From `specs/README.md` - llm-user-validation.md test coverage gaps:
-- [ ] Transcript report generation tests
-- [ ] Event logging tests
-- [ ] Human review workflow tests
-- [ ] CLI commands integration tests
-- [ ] LLM judge evaluation tests
-- [ ] Link parsing tests
-
-## Future Improvements
-
-### Open Tasks
-
-- [ ] **Rich event log format**
-  - Design structured event logging for test runs
-  - Consider JSON Lines format for events
-  - Events: spawn, output, tool_call, tool_result, complete, etc.
-
-- [ ] **Transcript redaction for secrets**
-  - Redact API keys and tokens before writing reports
-  - Redact passwords, email addresses, file paths with usernames
-  - Mark raw transcript as sensitive
-
-- [ ] **Results database (SQLite)**
-  - Optional SQLite backend for results tracking
-  - Enable trend analysis and querying across runs
-  - Current implementation uses JSONL
-
-### General Improvements
-
-- [ ] Add support for additional LLM tools
-  - [ ] Add more adapters in `src/adapter/`
-  - [ ] Document adapter interface
-
-- [ ] Improve scenario management
-  - [ ] Add scenario validation command
-  - [ ] Add scenario template generator
-  - [ ] Support scenario dependencies/composition
-
-- [ ] Enhance reporting
-  - [ ] HTML report generation option
-  - [ ] JUnit XML output for CI integration
-  - [ ] Trend analysis across multiple runs
-
-- [ ] Performance optimizations
-  - [ ] Parallel scenario execution
-  - [ ] Better caching strategies
-  - [ ] Reduce transcript processing time
-
-- [ ] Developer experience
-  - [ ] Add interactive scenario debugger
-  - [ ] Improve error messages and diagnostics
-  - [ ] Add progress indicators for long runs
-  - [ ] Better logging and verbosity controls
-
-- [ ] Integration features
-  - [ ] CI/CD integration examples (GitHub Actions, etc.)
-  - [ ] Webhook support for notifications
-  - [ ] Export to popular test management tools
-
-## Known Issues to Address
-
-### P1: Correctness Bugs
-
-- [ ] Budget enforcement not implemented
-  - CLI accepts `--timeout-secs` but no `--max-usd` budget limit
-  - Budget warning exists but doesn't enforce limits
-  - Need to add per-run and session budget controls
-
-- [ ] Cost estimation incomplete
-  - OpenCode adapter parses token usage but returns `None` for cost
-  - Need cost calculation from token usage using config pricing
-  - Other adapters (claude-code, mock) need cost implementation
-
-### General Issues
-
-- [ ] Some hardcoded paths assume specific project structure
-- [ ] Doctor gate check (`doctor_passes`) is tool-specific
-- [ ] Need to verify all gate types work with generic CLI tools
-
-## Questions to Resolve
-
-- [ ] What CLI tool should be used in example scenarios?
-- [ ] Should we publish to crates.io?
-- [ ] What is the target user (CLI tool developers vs end users)?
+- Add CONTRIBUTING.md guide
+- Add troubleshooting guide for common issues
+- Add CI/CD integration examples
+- Create video walkthrough of scenario creation

@@ -250,11 +250,13 @@ pub fn handle_show_command(name: &str, results_db: &ResultsDB) -> anyhow::Result
                 let tier = ScoreTier::from_score(score);
                 println!("Judge Score: {:.2} ({})", score, tier);
             }
-            let composite_tier = ScoreTier::from_score(r.metrics.composite_score);
-            println!(
-                "Composite Score: {:.2} ({})",
-                r.metrics.composite_score, composite_tier
-            );
+            if let Some(composite_score) = r.metrics.composite_score {
+                let composite_tier = ScoreTier::from_score(composite_score);
+                println!(
+                    "Composite Score: {:.2} ({})",
+                    composite_score, composite_tier
+                );
+            }
             println!("Transcript: {}", r.transcript_path);
         }
         None => println!("Run not found: {}", name),

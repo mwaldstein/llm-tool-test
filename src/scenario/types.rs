@@ -109,6 +109,9 @@ pub struct Evaluation {
     /// Optional judge configuration for LLM-as-judge scoring
     #[serde(default)]
     pub judge: Option<JudgeConfig>,
+    /// Optional composite scoring weights
+    #[serde(default)]
+    pub composite: Option<CompositeConfig>,
 }
 
 /// Configuration for LLM-as-judge evaluation.
@@ -120,6 +123,32 @@ pub struct JudgeConfig {
     pub rubric: String,
     /// Minimum score threshold to pass (0.0-1.0)
     pub pass_threshold: f64,
+}
+
+/// Configuration for composite scoring weights.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompositeConfig {
+    /// Weight for judge score (0.0-1.0)
+    #[serde(default = "default_judge_weight")]
+    pub judge_weight: f64,
+    /// Weight for gate pass rate (0.0-1.0)
+    #[serde(default = "default_gate_weight")]
+    pub gate_weight: f64,
+    /// Weight for interaction metrics (0.0-1.0)
+    #[serde(default = "default_interaction_weight")]
+    pub interaction_weight: f64,
+}
+
+fn default_judge_weight() -> f64 {
+    0.55
+}
+
+fn default_gate_weight() -> f64 {
+    0.35
+}
+
+fn default_interaction_weight() -> f64 {
+    0.10
 }
 
 /// Evaluation gate types for verifying task completion.

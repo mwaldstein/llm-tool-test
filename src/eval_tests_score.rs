@@ -13,7 +13,7 @@ fn test_compute_composite_score_with_judge() {
         iteration_ratio: 1.5,
     };
 
-    let composite = compute_composite_score(Some(0.9), 3, 3, &efficiency);
+    let composite = compute_composite_score(Some(0.9), 3, 3, &efficiency, None);
 
     let expected = (0.55 * 0.9) + (0.35 * 1.0) + (0.10 * 0.8);
     assert!((composite - expected).abs() < 0.001);
@@ -31,7 +31,7 @@ fn test_compute_composite_score_without_judge() {
         iteration_ratio: 1.5,
     };
 
-    let composite = compute_composite_score(None, 3, 3, &efficiency);
+    let composite = compute_composite_score(None, 3, 3, &efficiency, None);
 
     let expected = (0.55 * 0.0) + (0.35 * 1.0) + (0.10 * 0.8);
     assert!((composite - expected).abs() < 0.001);
@@ -49,7 +49,7 @@ fn test_compute_composite_score_empty_store() {
         iteration_ratio: 0.0,
     };
 
-    let composite = compute_composite_score(None, 0, 0, &efficiency);
+    let composite = compute_composite_score(None, 0, 0, &efficiency, None);
 
     assert_eq!(composite, 0.0);
 }
@@ -66,7 +66,7 @@ fn test_compute_composite_score_clamped() {
         iteration_ratio: 1.5,
     };
 
-    let composite = compute_composite_score(Some(1.5), 3, 3, &efficiency);
+    let composite = compute_composite_score(Some(1.5), 3, 3, &efficiency, None);
 
     assert!(composite <= 1.0);
     assert!(composite >= 0.0);

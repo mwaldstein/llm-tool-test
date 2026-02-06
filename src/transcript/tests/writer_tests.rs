@@ -61,7 +61,7 @@ fn test_write_evaluation_basic() {
         gates_total: 3,
         duration_secs: 30.0,
         cost_usd: Some(0.015),
-        composite_score: 0.82,
+        composite_score: Some(0.82),
         judge_feedback: vec![
             "**Issues:**\nMinor formatting issue".to_string(),
             "**Highlights:**\nGood structure".to_string(),
@@ -116,7 +116,7 @@ fn test_write_evaluation_without_judge_score() {
         gates_total: 2,
         duration_secs: 20.0,
         cost_usd: Some(0.01),
-        composite_score: 0.75,
+        composite_score: Some(0.75),
         judge_feedback: vec![],
         evaluator_results: vec![],
     };

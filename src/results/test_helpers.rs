@@ -55,7 +55,7 @@ pub fn create_test_record_with_tool(id: &str, scenario_id: &str, tool: &str) -> 
                 first_try_success_rate: 1.0,
                 iteration_ratio: 1.5,
             },
-            composite_score: 0.9,
+            composite_score: Some(0.9),
             evaluator_results: vec![],
         },
         judge_score: Some(0.9),

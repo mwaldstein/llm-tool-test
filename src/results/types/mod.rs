@@ -64,8 +64,9 @@ pub struct EvaluationMetricsRecord {
     pub details: Vec<GateResultRecord>,
     /// Efficiency metrics
     pub efficiency: EfficiencyMetricsRecord,
-    /// Composite quality score (0.0-1.0)
-    pub composite_score: f64,
+    /// Composite quality score (0.0-1.0), only present if scenario configures composite weights
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub composite_score: Option<f64>,
     /// Results from custom evaluators
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub evaluator_results: Vec<EvaluatorResultRecord>,
